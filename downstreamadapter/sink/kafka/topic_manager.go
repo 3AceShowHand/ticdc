@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package topicmanager
+package kafka
 
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/ticdc/downstreamadapter/sink/topicmanager"
 	"sync"
 	"time"
 
@@ -60,7 +61,7 @@ func GetTopicManagerAndTryCreateTopic(
 	topic string,
 	topicCfg *kafka.AutoCreateTopicConfig,
 	adminClient kafka.ClusterAdminClient,
-) (TopicManager, error) {
+) (topicmanager.TopicManager, error) {
 	topicManager := newKafkaTopicManager(
 		ctx, topic, changefeedID, adminClient, topicCfg,
 	)

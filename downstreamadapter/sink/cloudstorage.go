@@ -22,7 +22,6 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper"
 	"github.com/pingcap/ticdc/downstreamadapter/worker"
 	"github.com/pingcap/ticdc/pkg/common"
 	commonType "github.com/pingcap/ticdc/pkg/common"
@@ -67,13 +66,13 @@ func verifyCloudStorageSink(ctx context.Context, changefeedID common.ChangeFeedI
 	if err = cfg.Apply(ctx, sinkURI, sinkConfig); err != nil {
 		return err
 	}
-	if protocol, err = helper.GetProtocol(putil.GetOrZero(sinkConfig.Protocol)); err != nil {
+	if protocol, err = GetProtocol(putil.GetOrZero(sinkConfig.Protocol)); err != nil {
 		return err
 	}
 	if _, err = util.GetEncoderConfig(changefeedID, sinkURI, protocol, sinkConfig, math.MaxInt); err != nil {
 		return err
 	}
-	if storage, err = helper.GetExternalStorageFromURI(ctx, sinkURI.String()); err != nil {
+	if storage, err = GetExternalStorageFromURI(ctx, sinkURI.String()); err != nil {
 		return err
 	}
 	storage.Close()
@@ -91,21 +90,21 @@ func newCloudStorageSink(
 		return nil, err
 	}
 	// fetch protocol from replicaConfig defined by changefeed config file.
-	protocol, err := helper.GetProtocol(
+	protocol, err := GetProtocol(
 		putil.GetOrZero(sinkConfig.Protocol),
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 	// get cloud storage file extension according to the specific protocol.
-	ext := helper.GetFileExtension(protocol)
+	ext := GetFileExtension(protocol)
 	// the last param maxMsgBytes is mainly to limit the size of a single message for
 	// batch protocols in mq scenario. In cloud storage sink, we just set it to max int.
 	encoderConfig, err := util.GetEncoderConfig(changefeedID, sinkURI, protocol, sinkConfig, math.MaxInt)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	storage, err := helper.GetExternalStorageFromURI(ctx, sinkURI.String())
+	storage, err := GetExternalStorageFromURI(ctx, sinkURI.String())
 	if err != nil {
 		return nil, err
 	}

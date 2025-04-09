@@ -15,12 +15,13 @@ package worker
 
 import (
 	"context"
+	sink2 "github.com/pingcap/ticdc/downstreamadapter/sink"
+	"github.com/pingcap/ticdc/downstreamadapter/sink/eventrouter"
+	kafka2 "github.com/pingcap/ticdc/downstreamadapter/sink/kafka"
+	topicmanager2 "github.com/pingcap/ticdc/downstreamadapter/sink/topicmanager"
 	"net/url"
 
 	pulsarClient "github.com/apache/pulsar-client-go/pulsar"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper/eventrouter"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper/topicmanager"
 	commonType "github.com/pingcap/ticdc/pkg/common"
 	"github.com/pingcap/ticdc/pkg/common/columnselector"
 	"github.com/pingcap/ticdc/pkg/config"
@@ -40,7 +41,7 @@ type KafkaComponent struct {
 	Encoder        common.EventEncoder
 	ColumnSelector *columnselector.ColumnSelectors
 	EventRouter    *eventrouter.EventRouter
-	TopicManager   topicmanager.TopicManager
+	TopicManager   topicmanager2.TopicManager
 	AdminClient    kafka.ClusterAdminClient
 	Factory        kafka.Factory
 }
@@ -52,7 +53,7 @@ func getKafkaSinkComponentWithFactory(ctx context.Context,
 	factoryCreator kafka.FactoryCreator,
 ) (KafkaComponent, config.Protocol, error) {
 	kafkaComponent := KafkaComponent{}
-	protocol, err := helper.GetProtocol(utils.GetOrZero(sinkConfig.Protocol))
+	protocol, err := sink2.GetProtocol(utils.GetOrZero(sinkConfig.Protocol))
 	if err != nil {
 		return kafkaComponent, config.ProtocolUnknown, errors.Trace(err)
 	}
@@ -80,7 +81,7 @@ func getKafkaSinkComponentWithFactory(ctx context.Context,
 		}
 	}()
 
-	topic, err := helper.GetTopic(sinkURI)
+	topic, err := sink2.GetTopic(sinkURI)
 	if err != nil {
 		return kafkaComponent, protocol, errors.Trace(err)
 	}
@@ -89,7 +90,7 @@ func getKafkaSinkComponentWithFactory(ctx context.Context,
 		return kafkaComponent, protocol, errors.WrapError(errors.ErrKafkaNewProducer, err)
 	}
 
-	kafkaComponent.TopicManager, err = topicmanager.GetTopicManagerAndTryCreateTopic(
+	kafkaComponent.TopicManager, err = kafka2.GetTopicManagerAndTryCreateTopic(
 		ctx,
 		changefeedID,
 		topic,
@@ -153,7 +154,7 @@ type PulsarComponent struct {
 	Encoder        common.EventEncoder
 	ColumnSelector *columnselector.ColumnSelectors
 	EventRouter    *eventrouter.EventRouter
-	TopicManager   topicmanager.TopicManager
+	TopicManager   topicmanager2.TopicManager
 	Factory        pulsarClient.Client
 }
 
@@ -164,7 +165,7 @@ func getPulsarSinkComponentWithFactory(ctx context.Context,
 	factoryCreator pulsar.FactoryCreator,
 ) (PulsarComponent, config.Protocol, error) {
 	pulsarComponent := PulsarComponent{}
-	protocol, err := helper.GetProtocol(utils.GetOrZero(sinkConfig.Protocol))
+	protocol, err := sink2.GetProtocol(utils.GetOrZero(sinkConfig.Protocol))
 	if err != nil {
 		return pulsarComponent, config.ProtocolUnknown, errors.Trace(err)
 	}
@@ -179,12 +180,12 @@ func getPulsarSinkComponentWithFactory(ctx context.Context,
 		return pulsarComponent, protocol, errors.WrapError(errors.ErrKafkaNewProducer, err)
 	}
 
-	topic, err := helper.GetTopic(sinkURI)
+	topic, err := sink2.GetTopic(sinkURI)
 	if err != nil {
 		return pulsarComponent, protocol, errors.Trace(err)
 	}
 
-	pulsarComponent.TopicManager, err = topicmanager.GetPulsarTopicManagerAndTryCreateTopic(ctx, pulsarComponent.Config, topic, pulsarComponent.Factory)
+	pulsarComponent.TopicManager, err = topicmanager2.GetPulsarTopicManagerAndTryCreateTopic(ctx, pulsarComponent.Config, topic, pulsarComponent.Factory)
 	if err != nil {
 		return pulsarComponent, protocol, errors.Trace(err)
 	}

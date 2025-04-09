@@ -15,7 +15,6 @@ package topicmanager
 
 import (
 	"context"
-
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/pingcap/ticdc/pkg/config"
 )

@@ -15,6 +15,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/ticdc/downstreamadapter/sink"
 	"math"
 	"net/url"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"time"
 
 	"github.com/pingcap/failpoint"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper"
 	"github.com/pingcap/ticdc/pkg/common"
 	appcontext "github.com/pingcap/ticdc/pkg/common/context"
 	commonEvent "github.com/pingcap/ticdc/pkg/common/event"
@@ -84,21 +84,21 @@ func newCloudStorageDMLWorkerForTest(parentDir string, flushInterval int, sinkCo
 	if err != nil {
 		return nil, err
 	}
-	protocol, err := helper.GetProtocol(
+	protocol, err := sink.GetProtocol(
 		putil.GetOrZero(sinkConfig.Protocol),
 	)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 	// get cloud storage file extension according to the specific protocol.
-	ext := helper.GetFileExtension(protocol)
+	ext := sink.GetFileExtension(protocol)
 	// the last param maxMsgBytes is mainly to limit the size of a single message for
 	// batch protocols in mq scenario. In cloud storage sink, we just set it to max int.
 	encoderConfig, err := util.GetEncoderConfig(changefeedID, sinkURI, protocol, sinkConfig, math.MaxInt)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	storage, err := helper.GetExternalStorageFromURI(ctx, sinkURI.String())
+	storage, err := sink.GetExternalStorageFromURI(ctx, sinkURI.String())
 	if err != nil {
 		return nil, err
 	}

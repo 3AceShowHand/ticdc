@@ -15,11 +15,11 @@ package worker
 
 import (
 	"context"
+	"github.com/pingcap/ticdc/downstreamadapter/sink/eventrouter"
+	"github.com/pingcap/ticdc/downstreamadapter/sink/topicmanager"
 	"time"
 
 	"github.com/pingcap/log"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper/eventrouter"
-	"github.com/pingcap/ticdc/downstreamadapter/sink/helper/topicmanager"
 	"github.com/pingcap/ticdc/downstreamadapter/worker/producer"
 	commonType "github.com/pingcap/ticdc/pkg/common"
 	"github.com/pingcap/ticdc/pkg/common/event"
