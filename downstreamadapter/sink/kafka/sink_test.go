@@ -11,11 +11,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sink
+package kafka
 
 import (
 	"context"
 	"fmt"
+	sink2 "github.com/pingcap/ticdc/downstreamadapter/sink"
 	"net/url"
 	"testing"
 	"time"
@@ -98,7 +99,7 @@ func TestKafkaSinkBasicFunctionality(t *testing.T) {
 	sink, dmlProducer, ddlProducer, err := newKafkaSinkForTest()
 	require.NoError(t, err)
 
-	count.Store(0)
+	sink2.count.Store(0)
 
 	helper := commonEvent.NewEventTestHelper(t)
 	defer helper.Close()
@@ -119,7 +120,7 @@ func TestKafkaSinkBasicFunctionality(t *testing.T) {
 		},
 		NeedAddedTables: []commonEvent.Table{{TableID: 1, SchemaID: 1}},
 		PostTxnFlushed: []func(){
-			func() { count.Add(1) },
+			func() { sink2.count.Add(1) },
 		},
 	}
 
@@ -134,13 +135,13 @@ func TestKafkaSinkBasicFunctionality(t *testing.T) {
 		},
 		NeedAddedTables: []commonEvent.Table{{TableID: 1, SchemaID: 1}},
 		PostTxnFlushed: []func(){
-			func() { count.Add(1) },
+			func() { sink2.count.Add(1) },
 		},
 	}
 
 	dmlEvent := helper.DML2Event("test", "t", "insert into t values (1, 'test')", "insert into t values (2, 'test2');")
 	dmlEvent.PostTxnFlushed = []func(){
-		func() { count.Add(1) },
+		func() { sink2.count.Add(1) },
 	}
 	dmlEvent.CommitTs = 2
 
@@ -156,5 +157,5 @@ func TestKafkaSinkBasicFunctionality(t *testing.T) {
 	require.Len(t, dmlProducer.(*producer.KafkaMockProducer).GetAllEvents(), 2)
 	require.Len(t, ddlProducer.(*producer.KafkaMockProducer).GetAllEvents(), 1)
 
-	require.Equal(t, count.Load(), int64(3))
+	require.Equal(t, sink2.count.Load(), int64(3))
 }

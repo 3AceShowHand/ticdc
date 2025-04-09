@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sink
+package kafka
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func (s *KafkaSink) SinkType() common.SinkType {
 	return common.KafkaSinkType
 }
 
-func verifyKafkaSink(ctx context.Context, changefeedID common.ChangeFeedID, uri *url.URL, sinkConfig *config.SinkConfig) error {
+func Verify(ctx context.Context, changefeedID common.ChangeFeedID, uri *url.URL, sinkConfig *config.SinkConfig) error {
 	components, _, err := worker.GetKafkaSinkComponent(ctx, changefeedID, uri, sinkConfig)
 	if components.AdminClient != nil {
 		components.AdminClient.Close()
@@ -67,7 +67,7 @@ func verifyKafkaSink(ctx context.Context, changefeedID common.ChangeFeedID, uri 
 	return err
 }
 
-func newKafkaSink(
+func New(
 	ctx context.Context, changefeedID common.ChangeFeedID, sinkURI *url.URL, sinkConfig *config.SinkConfig,
 ) (*KafkaSink, error) {
 	kafkaComponent, protocol, err := worker.GetKafkaSinkComponent(ctx, changefeedID, sinkURI, sinkConfig)
