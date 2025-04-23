@@ -647,11 +647,10 @@ func (c *eventBroker) runSendMessageWorker(ctx context.Context, workerIndex int)
 					d, ok := c.getDispatcher(m.getDispatcherID())
 					if !ok {
 						log.Warn("Get dispatcher failed", zap.Any("dispatcherID", m.getDispatcherID()))
-						continue
 					} else if d.isHandshaked.Load() {
 						log.Info("Ignore handshake event since the dispatcher already handshaked", zap.Any("dispatcherID", m.getDispatcherID()))
-						continue
 					}
+					continue
 				}
 				tMsg := messaging.NewSingleTargetMessage(
 					m.serverID,
@@ -740,6 +739,7 @@ func (c *eventBroker) sendMsg(ctx context.Context, tMsg *messaging.TargetMessage
 // updateMetrics updates the metrics of the event broker periodically.
 func (c *eventBroker) updateMetrics(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 	log.Info("update metrics goroutine is started")
 	for {
 		select {
@@ -793,6 +793,7 @@ func (c *eventBroker) updateMetrics(ctx context.Context) {
 // The eventStore need to know this to GC the stale data.
 func (c *eventBroker) reportDispatcherStatToStore(ctx context.Context) {
 	ticker := time.NewTicker(time.Second * 120)
+	defer ticker.Stop()
 	log.Info("update dispatcher send ts goroutine is started")
 	for {
 		select {
@@ -924,7 +925,6 @@ func (c *eventBroker) addDispatcher(info DispatcherInfo) {
 }
 
 func (c *eventBroker) removeDispatcher(dispatcherInfo DispatcherInfo) {
-	defer c.metricDispatcherCount.Dec()
 	id := dispatcherInfo.GetID()
 	stat, ok := c.dispatchers.Load(id)
 	if !ok {
@@ -950,7 +950,7 @@ func (c *eventBroker) removeDispatcher(dispatcherInfo DispatcherInfo) {
 	c.eventStore.UnregisterDispatcher(id)
 	c.schemaStore.UnregisterTable(dispatcherInfo.GetTableSpan().TableID)
 	c.dispatchers.Delete(id)
-
+	c.metricDispatcherCount.Dec()
 	log.Info("remove dispatcher",
 		zap.Uint64("clusterID", c.tidbClusterID),
 		zap.Stringer("changefeedID", dispatcherInfo.GetChangefeedID()),
@@ -993,7 +993,7 @@ func (c *eventBroker) resetDispatcher(dispatcherInfo DispatcherInfo) {
 	if !ok {
 		return
 	}
-	stat.resetState(dispatcherInfo.GetStartTs())
+	stat.reset(dispatcherInfo.GetStartTs())
 	log.Info("reset dispatcher",
 		zap.Stringer("changefeedID", stat.changefeedStat.changefeedID),
 		zap.Stringer("dispatcherID", stat.info.GetID()),

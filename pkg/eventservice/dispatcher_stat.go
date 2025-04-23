@@ -121,8 +121,8 @@ func (a *dispatcherStat) updateSentResolvedTs(resolvedTs uint64) {
 	}
 }
 
-// resetState is used to reset the state of the dispatcher.
-func (a *dispatcherStat) resetState(resetTs uint64) {
+// reset is used to reset the state of the dispatcher.
+func (a *dispatcherStat) reset(resetTs uint64) {
 	// Do this first to prevent the dispatcher's sentResolvedTs being updated by other goroutines.
 	a.isHandshaked.Store(false)
 	// Reset the sentResolvedTs to the resetTs.

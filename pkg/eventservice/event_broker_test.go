@@ -120,7 +120,7 @@ func TestOnNotify(t *testing.T) {
 
 	disp := newDispatcherStat(startTs, disInfo, workerIndex, changefeedStatus)
 	// Make the dispatcher is reset.
-	disp.resetState(100)
+	disp.reset(100)
 	disp.isHandshaked.Store(true)
 
 	// Case 1: The resolvedTs is less than the startTs, it should not happen.
