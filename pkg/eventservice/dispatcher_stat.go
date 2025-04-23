@@ -15,12 +15,10 @@ package eventservice
 
 import (
 	"sync"
-	"time"
 
 	"github.com/pingcap/log"
 	"github.com/pingcap/ticdc/pkg/common"
 	pevent "github.com/pingcap/ticdc/pkg/common/event"
-	"github.com/pingcap/ticdc/pkg/filter"
 	"github.com/pingcap/ticdc/pkg/messaging"
 	"github.com/pingcap/ticdc/pkg/node"
 	"github.com/pingcap/ticdc/pkg/util"
@@ -31,15 +29,13 @@ import (
 // Store the progress of the dispatcher, and the incremental events stats.
 // Those information will be used to decide when will the worker start to handle the push task of this dispatcher.
 type dispatcherStat struct {
-	id common.DispatcherID
+	info DispatcherInfo
 	// reverse pointer to the changefeed status this dispatcher belongs to.
 	changefeedStat *changefeedStatus
 	// workerIndex is the index of the worker that this dispatcher belongs to.
 	workerIndex int
-	info        DispatcherInfo
 	// startTableInfo is the table info of the dispatcher when it is registered or reset.
 	startTableInfo atomic.Pointer[common.TableInfo]
-	filter         filter.Filter
 	// The reset ts send by the dispatcher.
 	// It is also the start ts of the dispatcher.
 	resetTs atomic.Uint64
@@ -71,9 +67,7 @@ type dispatcherStat struct {
 	isHandshaked atomic.Bool
 
 	// syncpoint related
-	enableSyncPoint   bool
-	nextSyncPoint     uint64
-	syncPointInterval time.Duration
+	nextSyncPoint uint64
 
 	// Scan task related
 	// taskScanning is used to indicate whether the scan task is running.
@@ -89,23 +83,18 @@ type dispatcherStat struct {
 func newDispatcherStat(
 	startTs uint64,
 	info DispatcherInfo,
-	filter filter.Filter,
 	workerIndex int,
 	changefeedStatus *changefeedStatus,
 ) *dispatcherStat {
 	dispStat := &dispatcherStat{
-		id:             info.GetID(),
+		info:           info,
 		changefeedStat: changefeedStatus,
 		workerIndex:    workerIndex,
-		info:           info,
-		filter:         filter,
 	}
 	changefeedStatus.addDispatcher()
 
 	if info.SyncPointEnabled() {
-		dispStat.enableSyncPoint = true
 		dispStat.nextSyncPoint = info.GetSyncPointTs()
-		dispStat.syncPointInterval = info.GetSyncPointInterval()
 	}
 	dispStat.eventStoreResolvedTs.Store(startTs)
 	dispStat.checkpointTs.Store(startTs)
@@ -184,7 +173,7 @@ func (a *dispatcherStat) IsRunning() bool {
 type scanTask = *dispatcherStat
 
 func (t scanTask) GetKey() common.DispatcherID {
-	return t.id
+	return t.info.GetID()
 }
 
 var wrapEventPool = sync.Pool{

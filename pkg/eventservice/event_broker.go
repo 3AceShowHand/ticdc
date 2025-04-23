@@ -118,7 +118,7 @@ func newEventBroker(
 	// 2. When the number of send message workers is too large, the lag of the resolvedTs has spikes.
 	// And when the number of send message workers is x, the lag of the resolvedTs is stable.
 	sendMessageWorkerCount := config.DefaultBasicEventHandlerConcurrency
-	scanWorkerCount := config.DefaultBasicEventHandlerConcurrency * 4
+	scanWorkerCount := sendMessageWorkerCount * 4
 
 	conf := config.GetGlobalServerConfig().Debug.EventService
 
@@ -199,7 +199,7 @@ func (c *eventBroker) sendWatermark(
 	watermark uint64,
 ) {
 	c.emitSyncPointEventIfNeeded(watermark, d, server)
-	re := pevent.NewResolvedEvent(watermark, d.id)
+	re := pevent.NewResolvedEvent(watermark, d.info.GetID())
 	resolvedEvent := newWrapResolvedEvent(
 		server,
 		re,
@@ -266,7 +266,7 @@ func (c *eventBroker) tickTableTriggerDispatchers(ctx context.Context) {
 				startTs := dispatcherStat.sentResolvedTs.Load()
 				remoteID := node.ID(dispatcherStat.info.GetServerID())
 				// TODO: maybe limit 1 is enough.
-				ddlEvents, endTs, err := c.schemaStore.FetchTableTriggerDDLEvents(dispatcherStat.filter, startTs, 100)
+				ddlEvents, endTs, err := c.schemaStore.FetchTableTriggerDDLEvents(dispatcherStat.info.GetFilter(), startTs, 100)
 				if err != nil {
 					log.Panic("get table trigger events failed", zap.Error(err))
 				}
@@ -295,14 +295,14 @@ func (c *eventBroker) logUnresetDispatchers(ctx context.Context) {
 			c.dispatchers.Range(func(key, value interface{}) bool {
 				dispatcher := value.(*dispatcherStat)
 				if dispatcher.resetTs.Load() == 0 {
-					log.Info("dispatcher not reset", zap.Any("dispatcher", dispatcher.id))
+					log.Info("dispatcher not reset", zap.Any("dispatcher", dispatcher.info.GetID()))
 				}
 				return true
 			})
 			c.tableTriggerDispatchers.Range(func(key, value interface{}) bool {
 				dispatcher := value.(*dispatcherStat)
 				if dispatcher.resetTs.Load() == 0 {
-					log.Info("table trigger dispatcher not reset", zap.Any("dispatcher", dispatcher.id))
+					log.Info("table trigger dispatcher not reset", zap.Any("dispatcher", dispatcher.info.GetID()))
 				}
 				return true
 			})
@@ -312,10 +312,10 @@ func (c *eventBroker) logUnresetDispatchers(ctx context.Context) {
 
 func (c *eventBroker) sendDDL(ctx context.Context, remoteID node.ID, e pevent.DDLEvent, d *dispatcherStat) {
 	c.emitSyncPointEventIfNeeded(e.FinishedTs, d, remoteID)
-	e.DispatcherID = d.id
+	e.DispatcherID = d.info.GetID()
 	e.Seq = d.seq.Add(1)
 	log.Info("send ddl event to dispatcher",
-		zap.Stringer("dispatcher", d.id),
+		zap.Stringer("dispatcher", e.DispatcherID),
 		zap.Int64("dispatcherTableID", d.info.GetTableSpan().TableID),
 		zap.String("query", e.Query),
 		zap.Int64("eventTableID", e.TableID),
@@ -405,7 +405,7 @@ func (c *eventBroker) checkAndSendHandshake(task scanTask) bool {
 	wrapE := &wrapEvent{
 		serverID: node.ID(task.info.GetServerID()),
 		e: pevent.NewHandshakeEvent(
-			task.id,
+			task.info.GetID(),
 			task.resetTs.Load(),
 			task.seq.Add(1),
 			task.startTableInfo.Load()),
@@ -425,9 +425,9 @@ func (c *eventBroker) checkAndSendHandshake(task scanTask) bool {
 // When a period of time, there is no other dml and ddls, we will batch multiple sync point commit ts in one sync point event to enhance the speed.
 func (c *eventBroker) emitSyncPointEventIfNeeded(ts uint64, d *dispatcherStat, remoteID node.ID) {
 	commitTsList := make([]uint64, 0)
-	for d.enableSyncPoint && ts > d.nextSyncPoint {
+	for d.info.SyncPointEnabled() && ts > d.nextSyncPoint {
 		commitTsList = append(commitTsList, d.nextSyncPoint)
-		d.nextSyncPoint = oracle.GoTimeToTS(oracle.GetTimeFromTS(d.nextSyncPoint).Add(d.syncPointInterval))
+		d.nextSyncPoint = oracle.GoTimeToTS(oracle.GetTimeFromTS(d.nextSyncPoint).Add(d.info.GetSyncPointInterval()))
 	}
 
 	for len(commitTsList) > 0 {
@@ -439,7 +439,7 @@ func (c *eventBroker) emitSyncPointEventIfNeeded(ts uint64, d *dispatcherStat, r
 		syncPointEvent := newWrapSyncPointEvent(
 			remoteID,
 			&pevent.SyncPointEvent{
-				DispatcherID: d.id,
+				DispatcherID: d.info.GetID(),
 				CommitTsList: newCommitTsList,
 			},
 			d.getEventSenderState())
@@ -457,7 +457,7 @@ func (c *eventBroker) emitSyncPointEventIfNeeded(ts uint64, d *dispatcherStat, r
 func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 	start := time.Now()
 	remoteID := node.ID(task.info.GetServerID())
-	dispatcherID := task.id
+	dispatcherID := task.info.GetID()
 
 	defer func() {
 		task.taskScanning.Store(false)
@@ -468,7 +468,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 	if !c.msgSender.IsReadyToSend(remoteID) {
 		log.Info("The remote target is not ready, skip scan",
 			zap.String("changefeed", task.info.GetChangefeedID().String()),
-			zap.String("dispatcher", task.id.String()),
+			zap.String("dispatcher", dispatcherID.String()),
 			zap.String("remote", remoteID.String()))
 		return
 	}
@@ -482,7 +482,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 	ddlEvents, err := c.schemaStore.
 		FetchTableDDLEvents(
 			dataRange.Span.TableID,
-			task.filter,
+			task.info.GetFilter(),
 			dataRange.StartTs,
 			dataRange.EndTs,
 		)
@@ -536,7 +536,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 				log.Info("The dispatcher is not running, skip the following scan",
 					zap.Uint64("clusterID", task.info.GetClusterID()),
 					zap.String("changefeed", task.info.GetChangefeedID().String()),
-					zap.String("dispatcher", task.id.String()),
+					zap.String("dispatcher", task.info.GetID().String()),
 					zap.Uint64("taskStartTs", dataRange.StartTs),
 					zap.Uint64("taskEndTs", dataRange.EndTs),
 					zap.Uint64("lastSentResolvedTs", task.sentResolvedTs.Load()),
@@ -805,7 +805,7 @@ func (c *eventBroker) reportDispatcherStatToStore(ctx context.Context) {
 				checkpointTs := dispatcher.sentResolvedTs.Load()
 				// TODO: when use checkpointTs, this check can be removed
 				if checkpointTs > 0 {
-					c.eventStore.UpdateDispatcherCheckpointTs(dispatcher.id, checkpointTs)
+					c.eventStore.UpdateDispatcherCheckpointTs(dispatcher.info.GetID(), checkpointTs)
 				}
 				return true
 			})
@@ -843,17 +843,16 @@ func (c *eventBroker) getDispatcher(id common.DispatcherID) (*dispatcherStat, bo
 
 func (c *eventBroker) addDispatcher(info DispatcherInfo) {
 	defer c.metricDispatcherCount.Inc()
-	filter := info.GetFilter()
 
 	start := time.Now()
 	id := info.GetID()
 	span := info.GetTableSpan()
 	startTs := info.GetStartTs()
 	changefeedID := info.GetChangefeedID()
-	changefeedStatus := c.getOrSetChangefeedStatus(changefeedID)
-	workerIndex := int((common.GID)(id).Hash(uint64(c.sendMessageWorkerCount)))
+	workerIndex := (common.GID)(id).Hash(uint64(c.sendMessageWorkerCount))
 
-	dispatcher := newDispatcherStat(startTs, info, filter, workerIndex, changefeedStatus)
+	status := c.getOrSetChangefeedStatus(changefeedID)
+	dispatcher := newDispatcherStat(startTs, info, workerIndex, status)
 	if span.Equal(heartbeatpb.DDLSpan) {
 		c.tableTriggerDispatchers.Store(id, dispatcher)
 		log.Info("table trigger dispatcher register dispatcher",
@@ -866,7 +865,6 @@ func (c *eventBroker) addDispatcher(info DispatcherInfo) {
 		)
 		return
 	}
-
 	brokerRegisterDuration := time.Since(start)
 
 	start = time.Now()
@@ -969,7 +967,7 @@ func (c *eventBroker) pauseDispatcher(dispatcherInfo DispatcherInfo) {
 	log.Info("pause dispatcher",
 		zap.Uint64("clusterID", c.tidbClusterID),
 		zap.Stringer("changefeedID", stat.changefeedStat.changefeedID),
-		zap.Stringer("dispatcherID", stat.id),
+		zap.Stringer("dispatcherID", stat.info.GetID()),
 		zap.String("span", common.FormatTableSpan(stat.info.GetTableSpan())),
 		zap.Uint64("sentResolvedTs", stat.sentResolvedTs.Load()),
 		zap.Uint64("seq", stat.seq.Load()))
@@ -983,7 +981,7 @@ func (c *eventBroker) resumeDispatcher(dispatcherInfo DispatcherInfo) {
 	}
 	log.Info("resume dispatcher",
 		zap.Stringer("changefeedID", stat.changefeedStat.changefeedID),
-		zap.Stringer("dispatcherID", stat.id),
+		zap.Stringer("dispatcherID", stat.info.GetID()),
 		zap.String("span", common.FormatTableSpan(stat.info.GetTableSpan())),
 		zap.Uint64("sentResolvedTs", stat.sentResolvedTs.Load()),
 		zap.Uint64("seq", stat.seq.Load()))
@@ -998,7 +996,7 @@ func (c *eventBroker) resetDispatcher(dispatcherInfo DispatcherInfo) {
 	stat.resetState(dispatcherInfo.GetStartTs())
 	log.Info("reset dispatcher",
 		zap.Stringer("changefeedID", stat.changefeedStat.changefeedID),
-		zap.Stringer("dispatcherID", stat.id),
+		zap.Stringer("dispatcherID", stat.info.GetID()),
 		zap.String("span", common.FormatTableSpan(stat.info.GetTableSpan())),
 		zap.Uint64("startTs", stat.info.GetStartTs()))
 }

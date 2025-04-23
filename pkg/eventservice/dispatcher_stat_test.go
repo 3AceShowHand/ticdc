@@ -39,18 +39,18 @@ func TestNewDispatcherStat(t *testing.T) {
 		changefeedID: info.GetChangefeedID(),
 	}
 
-	stat := newDispatcherStat(startTs, info, info.filter, workerIndex, changefeedStatus)
+	stat := newDispatcherStat(startTs, info, workerIndex, changefeedStatus)
 
-	require.Equal(t, info.GetID(), stat.id)
+	require.Equal(t, info.GetID(), stat.info.GetID())
 	require.Equal(t, workerIndex, stat.workerIndex)
 	require.Equal(t, uint64(0), stat.resetTs.Load())
 	require.Equal(t, startTs, stat.eventStoreResolvedTs.Load())
 	require.Equal(t, startTs, stat.checkpointTs.Load())
 	require.Equal(t, startTs, stat.sentResolvedTs.Load())
 	require.True(t, stat.isRunning.Load())
-	require.False(t, stat.enableSyncPoint)
+	require.False(t, stat.info.SyncPointEnabled())
 	require.Equal(t, info.GetSyncPointTs(), stat.nextSyncPoint)
-	require.Equal(t, info.GetSyncPointInterval(), stat.syncPointInterval)
+	require.Equal(t, info.GetSyncPointInterval(), stat.info.GetSyncPointInterval())
 }
 
 func TestDispatcherStatResolvedTs(t *testing.T) {
@@ -60,7 +60,7 @@ func TestDispatcherStatResolvedTs(t *testing.T) {
 	changefeedStatus := &changefeedStatus{
 		changefeedID: info.GetChangefeedID(),
 	}
-	stat := newDispatcherStat(100, info, info.filter, 1, changefeedStatus)
+	stat := newDispatcherStat(100, info, 1, changefeedStatus)
 
 	// Test normal update
 	updated := stat.onResolvedTs(150)
@@ -84,7 +84,7 @@ func TestDispatcherStatGetDataRange(t *testing.T) {
 	changefeedStatus := &changefeedStatus{
 		changefeedID: info.GetChangefeedID(),
 	}
-	stat := newDispatcherStat(100, info, info.filter, 1, changefeedStatus)
+	stat := newDispatcherStat(100, info, 1, changefeedStatus)
 	stat.eventStoreResolvedTs.Store(200)
 
 	// Normal case
@@ -113,7 +113,7 @@ func TestDispatcherStatUpdateWatermark(t *testing.T) {
 	changefeedStatus := &changefeedStatus{
 		changefeedID: info.GetChangefeedID(),
 	}
-	stat := newDispatcherStat(startTs, info, info.filter, 1, changefeedStatus)
+	stat := newDispatcherStat(startTs, info, 1, changefeedStatus)
 
 	// Case 1: no new events, only watermark change
 	stat.onResolvedTs(200)

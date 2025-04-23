@@ -69,7 +69,7 @@ func TestCheckNeedScan(t *testing.T) {
 	disInfo := newMockDispatcherInfoForTest(t)
 	changefeedStatus := broker.getOrSetChangefeedStatus(disInfo.GetChangefeedID())
 
-	disp := newDispatcherStat(100, newMockDispatcherInfoForTest(t), nil, 0, changefeedStatus)
+	disp := newDispatcherStat(100, newMockDispatcherInfoForTest(t), 0, changefeedStatus)
 	// Set the eventStoreResolvedTs and latestCommitTs to 102 and 101.
 	// To simulate the eventStore has just notified the broker.
 	disp.eventStoreResolvedTs.Store(102)
@@ -118,7 +118,7 @@ func TestOnNotify(t *testing.T) {
 	workerIndex := 0
 	changefeedStatus := broker.getOrSetChangefeedStatus(disInfo.GetChangefeedID())
 
-	disp := newDispatcherStat(startTs, disInfo, nil, workerIndex, changefeedStatus)
+	disp := newDispatcherStat(startTs, disInfo, workerIndex, changefeedStatus)
 	// Make the dispatcher is reset.
 	disp.resetState(100)
 	disp.isHandshaked.Store(true)
@@ -140,7 +140,7 @@ func TestOnNotify(t *testing.T) {
 	require.Equal(t, uint64(102), disp.eventStoreResolvedTs.Load())
 	require.True(t, disp.taskScanning.Load())
 	task := <-broker.taskChan
-	require.Equal(t, task.id, disp.id)
+	require.Equal(t, task.info.GetID(), disp.info.GetID())
 	log.Info("Pass case 3")
 	// Case 4: When the scan task is running, even there is a large latestCommitTs,
 	// should not trigger a new scan task.
@@ -176,14 +176,14 @@ func TestCURDDispatcher(t *testing.T) {
 	broker.addDispatcher(dispInfo)
 	disp, ok := broker.getDispatcher(dispInfo.GetID())
 	require.True(t, ok)
-	require.Equal(t, disp.id, dispInfo.GetID())
+	require.Equal(t, disp.info.GetID(), dispInfo.GetID())
 
 	// Case 2: Reset a dispatcher.
 	dispInfo.startTs = 1002
 	broker.resetDispatcher(dispInfo)
 	disp, ok = broker.getDispatcher(dispInfo.GetID())
 	require.True(t, ok)
-	require.Equal(t, disp.id, dispInfo.GetID())
+	require.Equal(t, disp.info.GetID(), dispInfo.GetID())
 	// Check the resetTs is updated.
 	require.Equal(t, disp.resetTs.Load(), dispInfo.GetStartTs())
 
@@ -214,7 +214,7 @@ func TestHandleResolvedTs(t *testing.T) {
 	broker.addDispatcher(dispInfo)
 	disp, ok := broker.getDispatcher(dispInfo.GetID())
 	require.True(t, ok)
-	require.Equal(t, disp.id, dispInfo.GetID())
+	require.Equal(t, disp.info.GetID(), dispInfo.GetID())
 
 	mc := broker.msgSender.(*mockMessageCenter)
 
