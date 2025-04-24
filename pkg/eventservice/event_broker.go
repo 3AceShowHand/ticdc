@@ -119,8 +119,7 @@ func newEventBroker(
 	// And when the number of send message workers is x, the lag of the resolvedTs is stable.
 	sendMessageWorkerCount := config.DefaultBasicEventHandlerConcurrency
 	scanWorkerCount := sendMessageWorkerCount * 4
-
-	conf := config.GetGlobalServerConfig().Debug.EventService
+	scanTaskQueueSize := config.GetGlobalServerConfig().Debug.EventService.ScanTaskQueueSize
 
 	g, ctx := errgroup.WithContext(ctx)
 	ctx, cancel := context.WithCancel(ctx)
@@ -139,7 +138,7 @@ func newEventBroker(
 		dispatchers:             sync.Map{},
 		tableTriggerDispatchers: sync.Map{},
 		msgSender:               mc,
-		taskChan:                make(chan scanTask, conf.ScanTaskQueueSize),
+		taskChan:                make(chan scanTask, scanTaskQueueSize),
 		sendMessageWorkerCount:  sendMessageWorkerCount,
 		messageCh:               make([]chan *wrapEvent, sendMessageWorkerCount),
 		scanWorkerCount:         scanWorkerCount,
@@ -518,7 +517,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 		metricEventBrokerScanTaskCount.Inc()
 	}()
 
-	lastSentDMLCommitTs := uint64(0)
+	var lastSentDMLCommitTs uint64
 	// sendDML is used to send the dml event to the dispatcher.
 	// It returns true if the dml event is sent successfully.
 	// Otherwise, it returns false.
@@ -561,10 +560,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 	var dml *pevent.DMLEvent
 	for {
 		// Node: The first event of the txn must return isNewTxn as true.
-		e, isNewTxn, err := iter.Next()
-		if err != nil {
-			log.Panic("read events failed", zap.Error(err))
-		}
+		e, isNewTxn := iter.Next()
 		if e == nil {
 			// Send the last dml to the dispatcher.
 			sendDML(dml)
@@ -576,7 +572,8 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask) {
 		if e.CRTs < dataRange.StartTs {
 			// If the commitTs of the event is less than the startTs of the data range,
 			// there are some bugs in the eventStore.
-			log.Panic("should never Happen", zap.Uint64("commitTs", e.CRTs), zap.Uint64("dataRangeStartTs", dataRange.StartTs))
+			log.Panic("commitTs less than the requested startTs, should never happen",
+				zap.Uint64("commitTs", e.CRTs), zap.Uint64("startTs", dataRange.StartTs))
 		}
 
 		if isNewTxn {

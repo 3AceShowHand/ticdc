@@ -78,7 +78,7 @@ type EventStore interface {
 
 	GetDispatcherDMLEventState(dispatcherID common.DispatcherID) (bool, DMLEventState)
 
-	// return an iterator which scan the data in ts range (dataRange.StartTs, dataRange.EndTs]
+	// GetIterator return an iterator which scan the data in ts range (dataRange.StartTs, dataRange.EndTs]
 	GetIterator(dispatcherID common.DispatcherID, dataRange common.DataRange) (EventIterator, error)
 }
 
@@ -89,7 +89,8 @@ type DMLEventState struct {
 }
 
 type EventIterator interface {
-	Next() (*common.RawKVEntry, bool, error)
+	// Next return the next RawKVEntry,
+	Next() (*common.RawKVEntry, bool)
 
 	// Close closes the iterator.
 	// It returns the number of events that are read from the iterator.
@@ -719,12 +720,12 @@ type eventStoreIter struct {
 	rowCount int64
 }
 
-func (iter *eventStoreIter) Next() (*common.RawKVEntry, bool, error) {
+func (iter *eventStoreIter) Next() (*common.RawKVEntry, bool) {
 	if iter.innerIter == nil {
 		log.Panic("iter is nil")
 	}
 	if !iter.innerIter.Valid() {
-		return nil, false, nil
+		return nil, false
 	}
 
 	value := iter.innerIter.Value()
@@ -737,17 +738,19 @@ func (iter *eventStoreIter) Next() (*common.RawKVEntry, bool, error) {
 		log.Panic("fail to decode raw kv entry", zap.Error(err))
 	}
 	metrics.EventStoreScanBytes.Add(float64(len(copiedValue)))
-	isNewTxn := false
+
+	var isNewTxn bool
 	if iter.prevCommitTs == 0 || (rawKV.StartTs != iter.prevStartTs || rawKV.CRTs != iter.prevCommitTs) {
 		isNewTxn = true
 	}
+
 	iter.prevCommitTs = rawKV.CRTs
 	iter.prevStartTs = rawKV.StartTs
 	iter.rowCount++
 	startTime := time.Now()
 	iter.innerIter.Next()
-	metricEventStoreNextReadDurationHistogram.Observe(float64(time.Since(startTime).Seconds()))
-	return rawKV, isNewTxn, nil
+	metricEventStoreNextReadDurationHistogram.Observe(time.Since(startTime).Seconds())
+	return rawKV, isNewTxn
 }
 
 func (iter *eventStoreIter) Close() (int64, error) {
@@ -762,7 +765,7 @@ func (iter *eventStoreIter) Close() (int64, error) {
 	startTime := time.Now()
 	err := iter.innerIter.Close()
 	iter.innerIter = nil
-	metricEventStoreCloseReadDurationHistogram.Observe(float64(time.Since(startTime).Seconds()))
+	metricEventStoreCloseReadDurationHistogram.Observe(time.Since(startTime).Seconds())
 	return iter.rowCount, err
 }
 
