@@ -19,6 +19,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMergeEvents(t *testing.T) {
+	helper := NewEventTestHelper(t)
+	defer helper.Close()
+
+	helper.tk.MustExec("use test")
+
+	createTable := `create table test.t(a int primary key, b int)`
+	ddlJob := helper.DDL2Job(createTable)
+	require.NotNil(t, ddlJob)
+
+	dmlEvent1 := helper.DML2Event("test", "t", `insert into test.t values (1, 1)`)
+	require.NotNil(t, dmlEvent1)
+
+	dmlEvent2 := helper.DML2Event("test", "t", `insert into test.t values (2, 2)`)
+	require.NotNil(t, dmlEvent2)
+
+	events := []*DMLEvent{dmlEvent1, dmlEvent2}
+	mergedEvent := MergeDMLEvent(events)
+	require.NotNil(t, mergedEvent)
+	require.Equal(t, mergedEvent.Length, int32(2))
+	require.Equal(t, mergedEvent.Rows.NumRows(), 2)
+	require.Equal(t, len(mergedEvent.RowTypes), 2)
+}
+
 // TestDMLEvent test the Marshal and Unmarshal of DMLEvent.
 func TestDMLEvent(t *testing.T) {
 	helper := NewEventTestHelper(t)
