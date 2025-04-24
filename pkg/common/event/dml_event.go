@@ -102,8 +102,8 @@ func NewDMLEvent(
 
 func (t *DMLEvent) AppendRow(raw *common.RawKVEntry,
 	decode func(
-		rawKv *common.RawKVEntry,
-		tableInfo *common.TableInfo, chk *chunk.Chunk) (int, *integrity.Checksum, error),
+	rawKv *common.RawKVEntry,
+	tableInfo *common.TableInfo, chk *chunk.Chunk) (int, *integrity.Checksum, error),
 ) error {
 	rowType := RowTypeInsert
 	if raw.OpType == common.OpTypeDelete {
@@ -123,6 +123,22 @@ func (t *DMLEvent) AppendRow(raw *common.RawKVEntry,
 	t.ApproximateSize += int64(len(raw.Key) + len(raw.Value) + len(raw.OldValue))
 	t.Checksum = checksum
 	return nil
+}
+
+// MergeDMLEvent merges multiple DMLEvents into one.
+func MergeDMLEvent(events []*DMLEvent) *DMLEvent {
+	if len(events) == 0 {
+		log.Panic("DMLEvent: empty events")
+	}
+	event := events[0]
+	for _, e := range events[1:] {
+		event.Rows.Append(e.Rows, 0, e.Rows.NumRows())
+		event.RowTypes = append(event.RowTypes, e.RowTypes...)
+		event.Length += e.Length
+		event.PostTxnFlushed = append(event.PostTxnFlushed, e.PostTxnFlushed...)
+		event.ApproximateSize += e.ApproximateSize
+	}
+	return event
 }
 
 func (t *DMLEvent) GetTableID() int64 {
