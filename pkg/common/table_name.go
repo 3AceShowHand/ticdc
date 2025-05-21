@@ -23,8 +23,9 @@ import (
 
 // TableName represents name of a table, includes table name and schema name.
 type TableName struct {
-	Schema      string `toml:"db-name" msg:"db-name"`
-	Table       string `toml:"tbl-name" msg:"tbl-name"`
+	Schema string `toml:"db-name" msg:"db-name"`
+	Table  string `toml:"tbl-name" msg:"tbl-name"`
+	// For the partition table, TableID is the ID of the logical tableID, not the physical table partition ID.
 	TableID     int64  `toml:"tbl-id" msg:"tbl-id"`
 	IsPartition bool   `toml:"is-partition" msg:"is-partition"`
 	quotedName  string `json:"-"`

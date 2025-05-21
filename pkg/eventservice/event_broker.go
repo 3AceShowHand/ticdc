@@ -356,14 +356,15 @@ func (c *eventBroker) logUnresetDispatchers(ctx context.Context) {
 // checkNeedScan checks if the dispatcher needs to scan the event store.
 // If the dispatcher needs to scan the event store, it returns true.
 // If the dispatcher does not need to scan the event store, it send the watermark to the dispatcher
-func (c *eventBroker) checkNeedScan(task scanTask, mustCheck bool) (bool, common.DataRange) {
+func (c *eventBroker) checkNeedScan(task scanTask, mustCheck bool) (common.DataRange, bool) {
+	var result common.DataRange
 	if !mustCheck && task.isTaskScanning.Load() {
-		return false, common.DataRange{}
+		return result, false
 	}
 
 	// If the dispatcher is not ready, we don't need to scan the event store.
 	if !c.checkAndSendReady(task) {
-		return false, common.DataRange{}
+		return result, false
 	}
 
 	c.checkAndSendHandshake(task)
@@ -376,25 +377,19 @@ func (c *eventBroker) checkNeedScan(task scanTask, mustCheck bool) (bool, common
 		remoteID := node.ID(task.info.GetServerID())
 
 		c.sendResolvedTs(remoteID, task, resolvedTs)
-		return false, common.DataRange{}
+		return result, false
 	}
 
 	// 1. Get the data range of the dispatcher.
 	dataRange, needScan := task.getDataRange()
 	if !needScan {
-		return false, common.DataRange{}
+		return result, false
 	}
 
 	// 2. Constrain the data range by the ddl state of the table.
-	ddlState := c.schemaStore.GetTableDDLEventState(task.info.GetTableSpan().TableID)
+	ddlState := c.schemaStore.GetTableDDLEventState(dataRange.Span.TableID)
 	if ddlState.ResolvedTs < dataRange.EndTs {
 		dataRange.EndTs = ddlState.ResolvedTs
-	}
-
-	// Note: Maybe we should still send a resolvedTs to downstream to tell that
-	// the dispatcher is alive?
-	if dataRange.EndTs <= dataRange.StartTs {
-		return false, common.DataRange{}
 	}
 
 	// target ts range: (dataRange.StartTs, dataRange.EndTs]
@@ -404,10 +399,10 @@ func (c *eventBroker) checkNeedScan(task scanTask, mustCheck bool) (bool, common
 		// We just send the watermark to the dispatcher.
 		remoteID := node.ID(task.info.GetServerID())
 		c.sendResolvedTs(remoteID, task, dataRange.EndTs)
-		return false, common.DataRange{}
+		return result, false
 	}
 
-	return true, dataRange
+	return result, true
 }
 
 func (c *eventBroker) checkAndSendReady(task scanTask) bool {
@@ -501,8 +496,7 @@ func (c *eventBroker) doScan(ctx context.Context, task scanTask, idx int) {
 		return
 	}
 
-	needScan, dataRange := c.checkNeedScan(task, true)
-
+	dataRange, needScan := c.checkNeedScan(task, true)
 	if !needScan {
 		return
 	}
@@ -824,7 +818,7 @@ func (c *eventBroker) onNotify(d *dispatcherStat, resolvedTs uint64, latestCommi
 	if d.onResolvedTs(resolvedTs) {
 		metricEventStoreOutputResolved.Inc()
 		d.onLatestCommitTs(latestCommitTs)
-		needScan, _ := c.checkNeedScan(d, false)
+		_, needScan := c.checkNeedScan(d, false)
 		if needScan {
 			c.pushTask(d, true)
 		}

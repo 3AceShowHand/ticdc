@@ -196,22 +196,29 @@ func (a *dispatcherStat) onLatestCommitTs(latestCommitTs uint64) bool {
 
 // getDataRange returns the the data range that the dispatcher needs to scan.
 func (a *dispatcherStat) getDataRange() (common.DataRange, bool) {
+	var result common.DataRange
 	startTs := a.sentResolvedTs.Load()
 	if startTs < a.resetTs.Load() {
 		startTs = a.resetTs.Load()
 	}
 
 	if startTs >= a.eventStoreResolvedTs.Load() {
-		return common.DataRange{}, false
+		return result, false
 	}
+
+	// Note: Maybe we should still send a resolvedTs to downstream to tell that
+	// the dispatcher is alive?
+	endTs := a.eventStoreResolvedTs.Load()
+	if endTs <= startTs {
+		return result, false
+	}
+
 	// Range: (startTs, EndTs],
 	// since the startTs(and the data before startTs) is already sent to the dispatcher.
-	r := common.DataRange{
-		Span:    a.info.GetTableSpan(),
-		StartTs: startTs,
-		EndTs:   a.eventStoreResolvedTs.Load(),
-	}
-	return r, true
+	result.Span = a.info.GetTableSpan()
+	result.StartTs = startTs
+	result.EndTs = endTs
+	return result, true
 }
 
 func (a *dispatcherStat) IsRunning() bool {

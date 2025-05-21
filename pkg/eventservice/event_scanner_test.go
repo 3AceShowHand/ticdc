@@ -69,7 +69,7 @@ func TestEventScanner(t *testing.T) {
 		MaxBytes: 1000,
 		Timeout:  10 * time.Second,
 	}
-	needScan, dataRange := broker.checkNeedScan(disp, true)
+	dataRange, needScan := broker.checkNeedScan(disp, true)
 	require.True(t, needScan)
 	events, isBroken, err := scanner.Scan(context.Background(), disp, dataRange, sl)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestEventScanner(t *testing.T) {
 	mockSchemaStore.AppendDDLEvent(tableID, ddlEvent)
 
 	disp.eventStoreResolvedTs.Store(resolvedTs)
-	needScan, dataRange = broker.checkNeedScan(disp, true)
+	dataRange, needScan = broker.checkNeedScan(disp, true)
 	require.True(t, needScan)
 
 	sl = scanLimit{
@@ -282,7 +282,7 @@ func TestEventScannerWithDDL(t *testing.T) {
 	}
 	mockSchemaStore.AppendDDLEvent(tableID, fakeDDL)
 	disp.eventStoreResolvedTs.Store(resolvedTs)
-	needScan, dataRange := broker.checkNeedScan(disp, true)
+	dataRange, needScan := broker.checkNeedScan(disp, true)
 	require.True(t, needScan)
 
 	eSize := len(kvEvents[0].Key) + len(kvEvents[0].Value) + len(kvEvents[0].OldValue)
@@ -380,7 +380,7 @@ func TestEventScannerWithDDL(t *testing.T) {
 	mockSchemaStore.AppendDDLEvent(tableID, fakeDDL3)
 	resolvedTs = resolvedTs + 3
 	disp.eventStoreResolvedTs.Store(resolvedTs)
-	needScan, dataRange = broker.checkNeedScan(disp, true)
+	dataRange, needScan = broker.checkNeedScan(disp, true)
 	require.True(t, needScan)
 
 	events, isBroken, err = scanner.Scan(context.Background(), disp, dataRange, sl)

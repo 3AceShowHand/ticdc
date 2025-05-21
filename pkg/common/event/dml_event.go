@@ -217,11 +217,12 @@ func (b *BatchDMLEvent) Len() int32 {
 // DMLEvent represent a batch of DMLs of a whole or partial of a transaction.
 type DMLEvent struct {
 	// Version is the version of the DMLEvent struct.
-	Version         byte                `json:"version"`
-	DispatcherID    common.DispatcherID `json:"dispatcher_id"`
-	PhysicalTableID int64               `json:"physical_table_id"`
-	StartTs         uint64              `json:"start_ts"`
-	CommitTs        uint64              `json:"commit_ts"`
+	Version      byte                `json:"version"`
+	DispatcherID common.DispatcherID `json:"dispatcher_id"`
+	// For the partition table, the PhysicalTableID is the ID of the physical table partition ID, not the logical tableID.
+	PhysicalTableID int64  `json:"physical_table_id"`
+	StartTs         uint64 `json:"start_ts"`
+	CommitTs        uint64 `json:"commit_ts"`
 	// The seq of the event. It is set by event service.
 	Seq uint64 `json:"seq"`
 	// State is the state of sender when sending this event.

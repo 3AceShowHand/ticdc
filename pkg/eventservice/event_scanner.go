@@ -95,11 +95,13 @@ func (s *eventScanner) Scan(
 	dataRange common.DataRange,
 	limit scanLimit,
 ) ([]event.Event, bool, error) {
-	startTime := time.Now()
-	var events []event.Event
-	var totalBytes int64
-	var lastCommitTs uint64
+	var (
+		events       []event.Event
+		totalBytes   int64
+		lastCommitTs uint64
+	)
 
+	startTime := time.Now()
 	defer func() {
 		metrics.EventServiceScanDuration.Observe(time.Since(startTime).Seconds())
 	}()
@@ -170,9 +172,11 @@ func (s *eventScanner) Scan(
 		}
 	}()
 
-	var batchDML *pevent.BatchDMLEvent
-	var lastTableInfoUpdateTs uint64
-	dmlCount := 0
+	var (
+		batchDML              *pevent.BatchDMLEvent
+		lastTableInfoUpdateTs uint64
+		dmlCount              int
+	)
 	tableID := dataRange.Span.TableID
 	for {
 		select {
