@@ -860,11 +860,10 @@ func (c *eventBroker) addDispatcher(info DispatcherInfo) {
 	span := info.GetTableSpan()
 	startTs := info.GetStartTs()
 	changefeedID := info.GetChangefeedID()
-	changefeedStatus := c.getOrSetChangefeedStatus(changefeedID)
-	workerIndex := int((common.GID)(id).Hash(uint64(c.sendMessageWorkerCount)))
-	scanWorkerIndex := int((common.GID)(id).Hash(uint64(c.scanWorkerCount)))
+	workerIndex := (common.GID)(id).Hash(uint64(c.sendMessageWorkerCount))
+	scanWorkerIndex := (common.GID)(id).Hash(uint64(c.scanWorkerCount))
 
-	dispatcher := newDispatcherStat(startTs, info, filter, scanWorkerIndex, workerIndex, changefeedStatus)
+	dispatcher := newDispatcherStat(startTs, info, filter, scanWorkerIndex, workerIndex, c.getOrSetChangefeedStatus(changefeedID))
 	if span.Equal(heartbeatpb.DDLSpan) {
 		c.tableTriggerDispatchers.Store(id, dispatcher)
 		log.Info("table trigger dispatcher register dispatcher",

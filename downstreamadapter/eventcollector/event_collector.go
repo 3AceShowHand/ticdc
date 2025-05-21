@@ -78,10 +78,8 @@ func (d *DispatcherHeartbeatWithTarget) incRetryCounter() {
 }
 
 const (
-	eventServiceTopic         = messaging.EventServiceTopic
-	eventCollectorTopic       = messaging.EventCollectorTopic
-	logCoordinatorTopic       = messaging.LogCoordinatorTopic
-	typeRegisterDispatcherReq = messaging.TypeDispatcherRequest
+	eventServiceTopic   = messaging.EventServiceTopic
+	logCoordinatorTopic = messaging.LogCoordinatorTopic
 )
 
 /*
@@ -425,11 +423,7 @@ func (c *EventCollector) mustSendDispatcherRequest(target node.ID, topic string,
 			zap.Any("request", req),
 			zap.Error(err))
 		// Put the request back to the channel for later retry.
-		c.dispatcherRequestChan.In() <- DispatcherRequestWithTarget{
-			Target: target,
-			Topic:  topic,
-			Req:    req,
-		}
+		c.addDispatcherRequestToSendingQueue(target, topic, req)
 		return err
 	}
 	return nil

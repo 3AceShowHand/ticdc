@@ -155,6 +155,7 @@ func (s *eventService) handleMessage(ctx context.Context, msg *messaging.TargetM
 			heartbeat: heartbeat,
 		}:
 		}
+	default:
 	}
 	return nil
 }
