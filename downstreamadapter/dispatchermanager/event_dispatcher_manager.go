@@ -127,8 +127,8 @@ type EventDispatcherManager struct {
 	metricResolvedTsLag                    prometheus.Gauge
 }
 
-// return actual startTs of the table trigger event dispatcher
-// when the table trigger event dispatcher is in this event dispatcher manager
+// NewEventDispatcherManager return the manager,
+// and the actual startTs of the table trigger event dispatcher if it's in this event dispatcher manager
 func NewEventDispatcherManager(
 	changefeedID common.ChangeFeedID,
 	cfConfig *config.ChangefeedConfig,
@@ -157,8 +157,8 @@ func NewEventDispatcherManager(
 		zap.String("filterConfig", filterCfg.String()),
 	)
 	manager := &EventDispatcherManager{
-		dispatcherMap:                          newDispatcherMap(),
 		changefeedID:                           changefeedID,
+		dispatcherMap:                          newDispatcherMap(),
 		pdClock:                                pdClock,
 		statusesChan:                           make(chan dispatcher.TableSpanStatusWithSeq, 8192),
 		blockStatusesChan:                      make(chan *heartbeatpb.TableSpanBlockStatus, 1024*1024),
