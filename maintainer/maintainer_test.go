@@ -62,7 +62,7 @@ func MockDispatcherManager(mc messaging.MessageCenter, self node.ID) *mockDispat
 		dispatchersMap: make(map[heartbeatpb.DispatcherID]*heartbeatpb.TableSpanStatus, 2000001),
 		self:           self,
 	}
-	mc.RegisterHandler(messaging.DispatcherManagerManagerTopic, m.recvMessages)
+	mc.RegisterHandler(messaging.DispatcherOrchestrator, m.recvMessages)
 	mc.RegisterHandler(messaging.HeartbeatCollectorTopic, m.recvMessages)
 	return m
 }

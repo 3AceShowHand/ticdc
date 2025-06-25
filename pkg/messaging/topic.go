@@ -33,6 +33,6 @@ const (
 	MaintainerTopic = "maintainer"
 	// HeartbeatCollectorTopic is the topic of the heartbeat collector.
 	HeartbeatCollectorTopic = "heartbeat-collector"
-	// DispatcherManagerTopic is the topic of the dispatcher manager.
-	DispatcherManagerManagerTopic = "dispatcher-manager-manager"
+	// DispatcherOrchestrator is the topic of the dispatcher orchestrator.
+	DispatcherOrchestrator = "dispatcher-orchestrator"
 )

@@ -46,7 +46,7 @@ func New() *DispatcherOrchestrator {
 		mc:                 appcontext.GetService[messaging.MessageCenter](appcontext.MessageCenter),
 		dispatcherManagers: make(map[common.ChangeFeedID]*dispatchermanager.EventDispatcherManager),
 	}
-	m.mc.RegisterHandler(messaging.DispatcherManagerManagerTopic, m.RecvMaintainerRequest)
+	m.mc.RegisterHandler(messaging.DispatcherOrchestrator, m.RecvMaintainerRequest)
 	return m
 }
 
@@ -99,7 +99,7 @@ func (m *DispatcherOrchestrator) handleBootstrapRequest(
 				from,
 				req.IsNewChangefeed,
 			)
-			// Fast return the error to maintainer.
+		// Fast return the error to maintainer.
 		if err != nil {
 			log.Error("failed to create new dispatcher manager",
 				zap.Any("changefeedID", cfId.Name()), zap.Error(err))
@@ -287,7 +287,7 @@ func (m *DispatcherOrchestrator) sendResponse(to node.ID, topic string, msg mess
 
 func (m *DispatcherOrchestrator) Close() {
 	log.Info("dispatcher orchestrator is closing")
-	m.mc.DeRegisterHandler(messaging.DispatcherManagerManagerTopic)
+	m.mc.DeRegisterHandler(messaging.DispatcherOrchestrator)
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

@@ -707,7 +707,7 @@ func (m *Maintainer) sendPostBootstrapRequest() {
 	if m.postBootstrapMsg != nil {
 		msg := messaging.NewSingleTargetMessage(
 			m.selfNode.ID,
-			messaging.DispatcherManagerManagerTopic,
+			messaging.DispatcherOrchestrator,
 			m.postBootstrapMsg,
 		)
 		m.sendMessages([]*messaging.TargetMessage{msg})
@@ -758,7 +758,7 @@ func (m *Maintainer) trySendMaintainerCloseRequestToAllNode() bool {
 		if _, ok := m.closedNodes[n]; !ok {
 			msgs = append(msgs, messaging.NewSingleTargetMessage(
 				n,
-				messaging.DispatcherManagerManagerTopic,
+				messaging.DispatcherOrchestrator,
 				&heartbeatpb.MaintainerCloseRequest{
 					ChangefeedID: m.id.ToPB(),
 					Removed:      m.changefeedRemoved.Load(),
@@ -839,7 +839,7 @@ func (m *Maintainer) createBootstrapMessageFactory() bootstrap.NewBootstrapMessa
 			zap.String("server", id.String()),
 			zap.Uint64("startTs", m.startCheckpointTs))
 
-		return messaging.NewSingleTargetMessage(id, messaging.DispatcherManagerManagerTopic, msg)
+		return messaging.NewSingleTargetMessage(id, messaging.DispatcherOrchestrator, msg)
 	}
 }
 
