@@ -24,110 +24,82 @@ import (
 
 // memoryQuota is used to track the memory usage.
 type memoryQuota struct {
-	capacity  uint64
-	isAborted atomic.Bool
+	capacity uint64
+	used     atomic.Uint64
+	stopped  atomic.Bool
 
-	consumed struct {
-		sync.Mutex
-		bytes uint64
-	}
-	consumedCond *sync.Cond
+	blockAcquireCond *sync.Cond
 }
 
 // quota: max advised memory consumption in bytes.
 func newMemoryQuota(quota uint64) *memoryQuota {
-	ret := &memoryQuota{
-		capacity: quota,
+	return &memoryQuota{
+		capacity:         quota,
+		blockAcquireCond: sync.NewCond(&sync.Mutex{}),
 	}
-
-	ret.consumedCond = sync.NewCond(&ret.consumed)
-	return ret
 }
 
-// consumeWithBlocking is called when a hard-limit is needed. The method will
-// block until enough memory has been freed up by release.
-// blockCallBack will be called if the function will block.
-// Should be used with care to prevent deadlock.
-func (c *memoryQuota) acquire(nBytes uint64, blockCallBack func() error) error {
-	if nBytes >= c.capacity {
-		// todo: can we simply force acquire here?
-		return errors.ErrAcquireLargerThanMemoryQuota.GenWithStackByArgs(nBytes, c.capacity)
-	}
-
-	c.consumed.Lock()
-	if c.consumed.bytes+nBytes >= c.capacity {
-		c.consumed.Unlock()
-		err := blockCallBack()
-		if err != nil {
-			return errors.Trace(err)
-		}
-	} else {
-		c.consumed.Unlock()
-	}
-
-	c.consumed.Lock()
-	defer c.consumed.Unlock()
-
+// BlockAcquire is used to block the request when the memory quota is not available.
+func (m *memoryQuota) blockAcquire(nBytes uint64) error {
 	for {
-		if c.isAborted.Load() {
+		if m.stopped.Load() {
 			return errors.ErrMemoryQuotaAborted.GenWithStackByArgs()
 		}
-
-		if c.consumed.bytes+nBytes < c.capacity {
-			break
+		inuse := m.used.Load()
+		if inuse+nBytes > m.capacity {
+			m.blockAcquireCond.L.Lock()
+			m.blockAcquireCond.Wait()
+			m.blockAcquireCond.L.Unlock()
+			continue
 		}
-		c.consumedCond.Wait()
+		if m.used.CompareAndSwap(inuse, inuse+nBytes) {
+			return nil
+		}
 	}
-
-	c.consumed.bytes += nBytes
-	return nil
 }
 
 // forceConsume is called when blocking is not acceptable and the limit can be violated
 // for the sake of avoid deadlock. It merely records the increased memory consumption.
-func (c *memoryQuota) forceAcquire(nBytes uint64) error {
-	c.consumed.Lock()
-	defer c.consumed.Unlock()
-
-	if c.isAborted.Load() {
+func (m *memoryQuota) forceAcquire(nBytes uint64) error {
+	if m.stopped.Load() {
 		return errors.ErrMemoryQuotaAborted.GenWithStackByArgs()
 	}
-
-	c.consumed.bytes += nBytes
+	m.used.Add(nBytes)
 	return nil
 }
 
 // release is called when a chuck of memory is done being used.
-func (c *memoryQuota) release(nBytes uint64) {
-	c.consumed.Lock()
-
-	if c.consumed.bytes < nBytes {
-		c.consumed.Unlock()
-		log.Panic("memoryQuota: releasing more than consumed, report a bug",
-			zap.Uint64("consumed", c.consumed.bytes),
-			zap.Uint64("released", nBytes))
-	}
-
-	c.consumed.bytes -= nBytes
-	if c.consumed.bytes < c.capacity {
-		c.consumed.Unlock()
-		c.consumedCond.Signal()
+func (m *memoryQuota) release(nBytes uint64) {
+	if nBytes == 0 {
 		return
 	}
+	inuse := m.used.Load()
+	if inuse < nBytes {
+		log.Panic("memory quota release failed, since used bytes is less than released bytes",
+			zap.Uint64("inuse", inuse), zap.Uint64("releasing", nBytes))
+	}
 
-	c.consumed.Unlock()
+	if m.used.Sub(nBytes) < m.capacity {
+		// todo: Broadcast or Signal?
+		m.blockAcquireCond.Broadcast()
+	}
 }
 
 // abort interrupts any ongoing consumeWithBlocking call
-func (c *memoryQuota) abort() {
-	c.isAborted.Store(true)
-	c.consumedCond.Signal()
+func (m *memoryQuota) close() {
+	if m.stopped.CompareAndSwap(false, true) {
+		m.blockAcquireCond.Broadcast()
+	}
 }
 
 // getConsumption returns the current memory consumption
-func (c *memoryQuota) getConsumption() uint64 {
-	c.consumed.Lock()
-	defer c.consumed.Unlock()
+func (m *memoryQuota) getUsed() uint64 {
+	return m.used.Load()
+}
 
-	return c.consumed.bytes
+func (m *memoryQuota) getAvailable() uint64 {
+	if m.stopped.Load() {
+		return 0
+	}
+	return m.capacity - m.used.Load()
 }
