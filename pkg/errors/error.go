@@ -358,7 +358,14 @@ var (
 		"invalid key: %s",
 		errors.RFCCodeText("CDC:ErrInvalidEtcdKey"),
 	)
-
+	ErrMemoryQuotaAborted = errors.Normalize(
+		"memory quota is aborted",
+		errors.RFCCodeText("CDC:ErrMemoryQuotaAborted"),
+	)
+	ErrAcquireLargerThanMemoryQuota = errors.Normalize(
+		"acquire event is larger than the memory quota, size: %d, quota: %d",
+		errors.RFCCodeText("CDC:ErrAcquireLargerThanMemoryQuota"),
+	)
 	ErrSchemaSnapshotNotFound = errors.Normalize(
 		"can not found schema snapshot, ts: %d",
 		errors.RFCCodeText("CDC:ErrSchemaSnapshotNotFound"),
