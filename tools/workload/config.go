@@ -54,8 +54,9 @@ type WorkloadConfig struct {
 	RangeNum int
 
 	// Log related
-	LogFile  string
-	LogLevel string
+	LogFile         string
+	LogLevel        string
+	EnableProfiling bool
 }
 
 // NewWorkloadConfig creates a new config with default values
@@ -96,8 +97,9 @@ func NewWorkloadConfig() *WorkloadConfig {
 		RangeNum: 5,
 
 		// Log related
-		LogFile:  "workload.log",
-		LogLevel: "info",
+		LogFile:         "workload.log",
+		LogLevel:        "info",
+		EnableProfiling: false,
 	}
 }
 
@@ -129,6 +131,7 @@ func (c *WorkloadConfig) ParseFlags() error {
 	flag.IntVar(&c.UpdateLargeColumnSize, "update-large-column-size", c.UpdateLargeColumnSize, "the size of the large column to update")
 	// For sysbench workload
 	flag.IntVar(&c.RangeNum, "range-num", c.RangeNum, "the number of ranges for sysbench workload")
+	flag.BoolVar(&c.EnableProfiling, "enable-profiling", c.EnableProfiling, "whether enable pprof or not")
 
 	flag.Parse()
 

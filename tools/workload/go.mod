@@ -8,6 +8,7 @@ require (
 	github.com/pingcap/errors v0.11.5-0.20240318064555-6bd07397691f
 	github.com/pingcap/log v1.1.1-0.20240314023424-862ccc32f18d
 	go.uber.org/zap v1.27.0
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
 
 require (

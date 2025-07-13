@@ -20,7 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	plog "github.com/pingcap/log"
+	"github.com/pingcap/log"
 	"go.uber.org/zap"
 )
 
@@ -41,16 +41,15 @@ type DBManager struct {
 
 // SetupConnections establishes database connections
 func (m *DBManager) SetupConnections() error {
-	plog.Info("start to setup databases")
+	log.Info("start to setup databases")
 	defer func() {
-		plog.Info("setup databases finished")
+		log.Info("setup databases finished")
 	}()
 
 	if m.Config.DBPrefix != "" {
 		return m.setupMultipleDatabases()
-	} else {
-		return m.setupSingleDatabase()
 	}
+	return m.setupSingleDatabase()
 }
 
 // setupMultipleDatabases sets up connections to multiple databases
@@ -60,7 +59,7 @@ func (m *DBManager) setupMultipleDatabases() error {
 		dbName := fmt.Sprintf("%s%d", m.Config.DBPrefix, i+1)
 		db, err := m.createDBConnection(dbName)
 		if err != nil {
-			plog.Info("create the sql client failed", zap.Error(err))
+			log.Info("create the sql client failed", zap.String("dbName", dbName), zap.Error(err))
 			continue
 		}
 		m.configureDBConnection(db)
@@ -112,7 +111,7 @@ func (m *DBManager) GetDB() *DBWrapper {
 
 // createDBConnection creates a database connection
 func (m *DBManager) createDBConnection(dbName string) (*sql.DB, error) {
-	plog.Info("create db connection", zap.String("dbName", dbName))
+	log.Info("create db connection", zap.String("dbName", dbName))
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=1073741824&multiStatements=true",
 		m.Config.DBUser, m.Config.DBPassword, m.Config.DBHost, m.Config.DBPort, dbName)
 	return sql.Open("mysql", dsn)
@@ -129,7 +128,7 @@ func (m *DBManager) configureDBConnection(db *sql.DB) {
 func (m *DBManager) CloseAll() {
 	for _, db := range m.DBs {
 		if err := db.DB.Close(); err != nil {
-			plog.Error("failed to close database connection", zap.Error(err))
+			log.Error("failed to close database connection", zap.Error(err))
 		}
 	}
 }

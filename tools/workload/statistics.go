@@ -72,7 +72,7 @@ func (app *WorkloadApp) printStats(stats statistics) {
 }
 
 // reportMetrics prints the statistics every 5 seconds
-func (app *WorkloadApp) reportMetrics() {
+func (app *WorkloadApp) StartMetricsReporting() {
 	plog.Info("start to report metrics")
 	const (
 		reportInterval = 5 * time.Second

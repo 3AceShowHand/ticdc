@@ -22,9 +22,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/errors"
-	plog "github.com/pingcap/log"
-	"go.uber.org/zap"
 	"workload/schema"
 	pbank "workload/schema/bank"
 	pbank2 "workload/schema/bank2"
@@ -34,6 +31,10 @@ import (
 	"workload/schema/shop"
 	psysbench "workload/schema/sysbench"
 	puuu "workload/schema/uuu"
+
+	"github.com/pingcap/errors"
+	plog "github.com/pingcap/log"
+	"go.uber.org/zap"
 )
 
 // WorkloadExecutor executes the workload and collects statistics
@@ -332,11 +333,6 @@ func (app *WorkloadApp) executeWithValues(conn *sql.Conn, sqlStr string, n int, 
 
 	// Execute the prepared statement
 	return stmt.Exec(values...)
-}
-
-// StartMetricsReporting starts reporting metrics
-func (app *WorkloadApp) StartMetricsReporting() {
-	go app.reportMetrics()
 }
 
 func getSQLPreview(sql string) string {
