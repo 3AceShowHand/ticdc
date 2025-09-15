@@ -682,12 +682,12 @@ func (p *persistentStorage) persistUpperBoundPeriodically(ctx context.Context) e
 	}
 }
 
-func (p *persistentStorage) handleDDLJob(job *model.Job) error {
+func (p *persistentStorage) handleDDLJob(job *model.Job) {
 	p.mu.Lock()
 
 	if shouldSkipDDL(job, p.tableMap) {
 		p.mu.Unlock()
-		return nil
+		return
 	}
 
 	// ALTER TABLE t2 ADD FULLTEXT INDEX (b) WITH PARSER standard;
@@ -699,7 +699,7 @@ func (p *persistentStorage) handleDDLJob(job *model.Job) error {
 	handler, ok := allDDLHandlers[job.Type]
 	if !ok {
 		log.Error("unknown ddl type, ignore it", zap.Any("ddlType", job.Type), zap.String("query", job.Query))
-		return nil
+		return
 	}
 	ddlEvent := handler.buildPersistedDDLEventFunc(buildPersistedDDLEventFuncArgs{
 		job:          job,
@@ -754,8 +754,6 @@ func (p *persistentStorage) handleDDLJob(job *model.Job) error {
 			}
 		}
 	})
-
-	return nil
 }
 
 func shouldSkipDDL(job *model.Job, tableMap map[int64]*BasicTableInfo) bool {
