@@ -115,7 +115,7 @@ func readGcTs(db *pebble.DB) (uint64, error) {
 	defer closer.Close()
 	var gcTs uint64
 	buf := bytes.NewBuffer(value)
-	if err := binary.Read(buf, binary.BigEndian, &gcTs); err != nil {
+	if err = binary.Read(buf, binary.BigEndian, &gcTs); err != nil {
 		log.Fatal("read gc ts failed", zap.Error(err))
 	}
 	return gcTs, nil

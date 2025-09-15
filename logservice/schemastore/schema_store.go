@@ -96,7 +96,7 @@ func New(
 	pdCli pd.Client,
 	kvStorage kv.Storage,
 ) SchemaStore {
-	dataStorage := newPersistentStorage(ctx, root, pdCli, kvStorage)
+	dataStorage := newPersistentStorage(root, pdCli, kvStorage)
 	s := &schemaStore{
 		pdClock:       appcontext.GetService[pdutil.Clock](appcontext.DefaultPDClock),
 		unsortedCache: newDDLCache(),
@@ -325,15 +325,15 @@ func (s *schemaStore) FetchTableTriggerDDLEvents(tableFilter filter.Filter, star
 }
 
 func (s *schemaStore) writeDDLEvent(ddlEvent DDLJobWithCommitTs) {
+	if filter.IsSysSchema(ddlEvent.Job.SchemaName) {
+		return
+	}
+	s.unsortedCache.addDDLEvent(ddlEvent)
 	log.Debug("write ddl event",
 		zap.Int64("schemaID", ddlEvent.Job.SchemaID),
 		zap.Int64("tableID", ddlEvent.Job.TableID),
 		zap.Uint64("finishedTs", ddlEvent.Job.BinlogInfo.FinishedTS),
 		zap.String("query", ddlEvent.Job.Query))
-
-	if !filter.IsSysSchema(ddlEvent.Job.SchemaName) {
-		s.unsortedCache.addDDLEvent(ddlEvent)
-	}
 }
 
 // advancePendingResolvedTs will be call by ddlJobFetcher when it fetched a new ddl event

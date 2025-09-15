@@ -127,7 +127,6 @@ func openDB(dbPath string) *pebble.DB {
 }
 
 func newPersistentStorage(
-	ctx context.Context,
 	root string,
 	pdCli pd.Client,
 	storage kv.Storage,
