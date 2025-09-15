@@ -232,6 +232,9 @@ func (p *persistentStorage) initializeFromKVStorage(dbPath string, storage kv.St
 }
 
 func (p *persistentStorage) initializeFromDisk() {
+	start := time.Now()
+	log.Info("schema store initialize from kv storage begin", zap.Uint64("snapTs", p.gcTs))
+
 	cleanObsoleteData(p.db, 0, p.gcTs)
 
 	storageSnap := p.db.NewSnapshot()
@@ -255,6 +258,11 @@ func (p *persistentStorage) initializeFromDisk() {
 		p.partitionMap); err != nil {
 		log.Fatal("fail to initialize from disk")
 	}
+	log.Info("schema store initialize from disk done",
+		zap.Int("databaseMapLen", len(p.databaseMap)),
+		zap.Int("tableMapLen", len(p.tableMap)),
+		zap.Uint64("snapTs", p.gcTs),
+		zap.Any("duration(s)", time.Since(start).Seconds()))
 }
 
 func (p *persistentStorage) close() error {

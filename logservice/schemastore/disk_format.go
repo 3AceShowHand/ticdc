@@ -652,6 +652,8 @@ func persistSchemaSnapshot(
 							Tables: tablesInDB,
 						}
 						databaseMap[dbInfo.ID] = databaseInfo
+						log.Info("add database to the map", zap.Int64("schemaID", dbInfo.ID),
+							zap.String("schemaName", dbInfo.Name.O), zap.Int("tableCount", len(tablesInDB)))
 					}
 					if err := batch.Commit(pebble.NoSync); err != nil {
 						return nil, nil, nil, err
