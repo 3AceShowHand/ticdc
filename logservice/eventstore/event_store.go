@@ -220,11 +220,7 @@ const (
 	writeWorkerNumPerDB = 4
 )
 
-func New(
-	ctx context.Context,
-	root string,
-	subClient logpuller.SubscriptionClient,
-) EventStore {
+func New(root string, subClient logpuller.SubscriptionClient) EventStore {
 	dbPath := fmt.Sprintf("%s/%s", root, dataDir)
 
 	// FIXME: avoid remove

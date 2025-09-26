@@ -135,7 +135,6 @@ func TestSubscriptionWithFailedTiKV(t *testing.T) {
 	client := NewSubscriptionClient(
 		clientConfig,
 		pdClient,
-		nil, // we don't need it in this unittest, so we can pass nil
 		&security.Credential{},
 	)
 

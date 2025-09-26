@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap/ticdc/logservice/eventstore"
 	"github.com/pingcap/ticdc/logservice/logpuller"
 	"github.com/pingcap/ticdc/logservice/schemastore"
-	"github.com/pingcap/ticdc/logservice/txnutil"
 	"github.com/pingcap/ticdc/maintainer"
 	"github.com/pingcap/ticdc/pkg/api"
 	"github.com/pingcap/ticdc/pkg/common"
@@ -149,15 +148,14 @@ func (c *server) initialize(ctx context.Context) error {
 		appctx.GetService[messaging.MessageCenter](appctx.MessageCenter).OnNodeChanges)
 
 	conf := config.GetGlobalServerConfig()
-	schemaStore := schemastore.New(ctx, conf.DataDir, c.pdClient, c.pdEndpoints)
+	schemaStore := schemastore.New(conf.DataDir, c.pdClient, c.pdEndpoints)
 	subscriptionClient := logpuller.NewSubscriptionClient(
 		&logpuller.SubscriptionClientConfig{
 			RegionRequestWorkerPerStore: 8,
 		}, c.pdClient,
-		txnutil.NewLockerResolver(),
 		c.security,
 	)
-	eventStore := eventstore.New(ctx, conf.DataDir, subscriptionClient)
+	eventStore := eventstore.New(conf.DataDir, subscriptionClient)
 	eventService := eventservice.New(eventStore, schemaStore)
 	c.upstreamManager = upstream.NewManager(ctx, upstream.NodeTopologyCfg{
 		Info:        c.info,

@@ -80,11 +80,10 @@ func (s *mockSubscriptionClient) Unsubscribe(subID logpuller.SubscriptionID) {
 }
 
 func newEventStoreForTest(path string) (logpuller.SubscriptionClient, EventStore) {
-	ctx := context.Background()
 	mockPDClock := pdutil.NewClock4Test()
 	appcontext.SetService(appcontext.DefaultPDClock, mockPDClock)
 	subClient := NewMockSubscriptionClient()
-	store := New(ctx, path, subClient)
+	store := New(path, subClient)
 	return subClient, store
 }
 
