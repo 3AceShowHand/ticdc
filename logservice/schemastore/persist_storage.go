@@ -589,8 +589,6 @@ func (p *persistentStorage) doGc(gcTs uint64) error {
 
 	serverConfig := config.GetGlobalServerConfig()
 	if !serverConfig.Debug.SchemaStore.EnableGC {
-		log.Info("gc is disabled",
-			zap.Uint64("gcTs", gcTs))
 		return nil
 	}
 
