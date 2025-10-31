@@ -108,7 +108,7 @@ func fetchTiDBTopology(ctx context.Context, etcdClient etcd.Client, ks string) (
 		return nil, err
 	}
 
-	return upstream.FetchTiDBTopology(ctx, etcdClient, meta.Id)
+	return upstream.FetchTiDBTopology(ctx, etcdClient, meta.GetID())
 }
 
 func doVerify(dsnStr string) error {

@@ -250,7 +250,7 @@ func KeyspaceCheckerMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if meta.State != keyspacepb.KeyspaceState_ENABLED {
+		if meta.GetState() != keyspacepb.KeyspaceState_ENABLED {
 			c.IndentedJSON(http.StatusBadRequest, errors.ErrAPIInvalidParam)
 			c.Abort()
 			return

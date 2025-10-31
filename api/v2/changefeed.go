@@ -154,7 +154,7 @@ func (h *OpenAPIV2) CreateChangefeed(c *gin.Context) {
 		ctx,
 		h.server.GetPdClient(),
 		createGcServiceID,
-		keyspaceMeta.Id,
+		keyspaceMeta.GetID(),
 		changefeedID,
 		ensureTTL, cfg.StartTs); err != nil {
 		if !errors.ErrStartTsBeforeGC.Equal(err) {
@@ -257,7 +257,7 @@ func (h *OpenAPIV2) CreateChangefeed(c *gin.Context) {
 		err = gc.UndoEnsureChangefeedStartTsSafety(
 			ctx,
 			pdClient,
-			keyspaceMeta.Id,
+			keyspaceMeta.GetID(),
 			createGcServiceID,
 			changefeedID,
 		)
@@ -671,11 +671,11 @@ func (h *OpenAPIV2) ResumeChangefeed(c *gin.Context) {
 	}
 
 	resumeGcServiceID := h.server.GetEtcdClient().GetEnsureGCServiceID(gc.EnsureGCServiceResuming)
-	if err := verifyResumeChangefeedConfig(
+	if err = verifyResumeChangefeedConfig(
 		ctx,
 		h.server.GetPdClient(),
 		resumeGcServiceID,
-		keyspaceMeta.Id,
+		keyspaceMeta.GetID(),
 		cfInfo.ChangefeedID,
 		newCheckpointTs); err != nil {
 		_ = c.Error(err)
@@ -691,7 +691,7 @@ func (h *OpenAPIV2) ResumeChangefeed(c *gin.Context) {
 		err = gc.UndoEnsureChangefeedStartTsSafety(
 			ctx,
 			h.server.GetPdClient(),
-			keyspaceMeta.Id,
+			keyspaceMeta.GetID(),
 			resumeGcServiceID,
 			cfInfo.ChangefeedID,
 		)

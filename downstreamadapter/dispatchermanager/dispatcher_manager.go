@@ -182,7 +182,7 @@ func NewDispatcherManager(
 	manager := &DispatcherManager{
 		dispatcherMap:         newDispatcherMap[*dispatcher.EventDispatcher](),
 		changefeedID:          changefeedID,
-		keyspaceID:            keyspaceMeta.Id,
+		keyspaceID:            keyspaceMeta.GetID(),
 		pdClock:               pdClock,
 		cancel:                cancel,
 		config:                cfConfig,

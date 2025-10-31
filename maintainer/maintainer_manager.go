@@ -238,7 +238,7 @@ func (m *Manager) onAddMaintainerRequest(req *heartbeatpb.AddMaintainerRequest) 
 		log.Error("load keyspace meta fail", zap.String("keyspace", cfID.Keyspace()))
 	}
 
-	maintainer := NewMaintainer(cfID, m.conf, info, m.nodeInfo, m.taskScheduler, req.CheckpointTs, req.IsNewChangefeed, keyspaceMeta.Id)
+	maintainer := NewMaintainer(cfID, m.conf, info, m.nodeInfo, m.taskScheduler, req.CheckpointTs, req.IsNewChangefeed, keyspaceMeta.GetID())
 	m.maintainers.Store(cfID, maintainer)
 	maintainer.pushEvent(&Event{changefeedID: cfID, eventType: EventInit})
 	return nil
@@ -270,7 +270,7 @@ func (m *Manager) onRemoveMaintainerRequest(msg *messaging.TargetMessage) *heart
 
 		// it's cascade remove, we should remove the dispatcher from all node
 		// here we create a maintainer to run the remove the dispatcher logic
-		cf = NewMaintainerForRemove(cfID, m.conf, m.nodeInfo, m.taskScheduler, keyspaceMeta.Id)
+		cf = NewMaintainerForRemove(cfID, m.conf, m.nodeInfo, m.taskScheduler, keyspaceMeta.GetID())
 		m.maintainers.Store(cfID, cf)
 	}
 	cf.(*Maintainer).pushEvent(&Event{

@@ -294,12 +294,12 @@ func (c *coordinator) handleStateChange(
 		} else {
 			// We need to clean its gc safepoint when changefeed is resumed or created
 			gcServiceID := c.getEnsureGCServiceID(gc.EnsureGCServiceCreating)
-			err := gc.UndoEnsureChangefeedStartTsSafety(ctx, c.pdClient, keyspaceMeta.Id, gcServiceID, event.changefeedID)
+			err := gc.UndoEnsureChangefeedStartTsSafety(ctx, c.pdClient, keyspaceMeta.GetID(), gcServiceID, event.changefeedID)
 			if err != nil {
 				log.Warn("failed to delete create changefeed gc safepoint", zap.Error(err))
 			}
 			gcServiceID = c.getEnsureGCServiceID(gc.EnsureGCServiceResuming)
-			err = gc.UndoEnsureChangefeedStartTsSafety(ctx, c.pdClient, keyspaceMeta.Id, gcServiceID, event.changefeedID)
+			err = gc.UndoEnsureChangefeedStartTsSafety(ctx, c.pdClient, keyspaceMeta.GetID(), gcServiceID, event.changefeedID)
 			if err != nil {
 				log.Warn("failed to delete resume changefeed gc safepoint", zap.Error(err))
 			}
@@ -478,7 +478,6 @@ func (c *coordinator) updateKeyspaceGcBarrier(ctx context.Context, barrierMap ma
 	if err != nil {
 		return cerror.WrapError(cerror.ErrLoadKeyspaceFailed, err)
 	}
-	keyspaceID := keyspaceMeta.Id
 
 	barrierTS, ok := barrierMap[keyspaceName]
 	if !ok || barrierTS == math.MaxUint64 {
@@ -487,7 +486,7 @@ func (c *coordinator) updateKeyspaceGcBarrier(ctx context.Context, barrierMap ma
 	}
 
 	barrierTsUpperBound := barrierTS - 1
-	err = c.gcManager.TryUpdateKeyspaceGCBarrier(ctx, keyspaceID, keyspaceName, barrierTsUpperBound, false)
+	err = c.gcManager.TryUpdateKeyspaceGCBarrier(ctx, keyspaceMeta.GetID(), keyspaceName, barrierTsUpperBound, false)
 	return errors.Trace(err)
 }
 

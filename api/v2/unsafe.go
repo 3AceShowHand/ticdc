@@ -68,10 +68,10 @@ func (h *OpenAPIV2) ResolveLock(c *gin.Context) {
 	}
 
 	txnResolver := txnutil.NewLockerResolver()
-	if err := txnResolver.Resolve(schemaCxt, keyspaceMeta.Id, resolveLockReq.RegionID, resolveLockReq.Ts); err != nil {
+	if err = txnResolver.Resolve(schemaCxt, keyspaceMeta.GetID(), resolveLockReq.RegionID, resolveLockReq.Ts); err != nil {
 		log.Error(
 			"resolve lock failed",
-			zap.Uint32("keyspaceID", keyspaceMeta.Id),
+			zap.Uint32("keyspaceID", keyspaceMeta.GetID()),
 			zap.Uint64("regionID", resolveLockReq.RegionID),
 			zap.Uint64("resolveLockTs", resolveLockReq.Ts),
 			zap.Error(err),
@@ -103,7 +103,7 @@ func (h *OpenAPIV2) DeleteServiceGcSafePoint(c *gin.Context) {
 	err = gc.UnifyDeleteGcSafepoint(
 		c,
 		pdClient,
-		keyspaceMeta.Id,
+		keyspaceMeta.GetID(),
 		h.server.GetEtcdClient().GetGCServiceID(),
 	)
 	if err != nil {

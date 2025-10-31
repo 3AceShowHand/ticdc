@@ -29,12 +29,34 @@ import (
 	"github.com/pingcap/ticdc/pkg/retry"
 	"github.com/pingcap/ticdc/pkg/upstream"
 	"github.com/pingcap/tidb/pkg/kv"
+	"github.com/tikv/client-go/v2/tikv"
 	"go.uber.org/zap"
 )
 
+type keyspaceMeta struct {
+	meta  *keyspacepb.KeyspaceMeta
+	codec tikv.Codec
+}
+
+func (m *keyspaceMeta) GetCodec() tikv.Codec {
+	return m.codec
+}
+
+func (m *keyspaceMeta) GetID() uint32 {
+	return m.meta.Id
+}
+
+func (m *keyspaceMeta) GetState() keyspacepb.KeyspaceState {
+	return m.meta.GetState()
+}
+
+func (m *keyspaceMeta) GetName() string {
+	return m.meta.Name
+}
+
 type Manager interface {
-	LoadKeyspace(ctx context.Context, keyspace string) (*keyspacepb.KeyspaceMeta, error)
-	GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspacepb.KeyspaceMeta, error)
+	LoadKeyspace(ctx context.Context, keyspace string) (*keyspaceMeta, error)
+	GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspaceMeta, error)
 	GetStorage(keyspace string) (kv.Storage, error)
 	Close()
 }
@@ -42,8 +64,8 @@ type Manager interface {
 func NewManager(pdEndpoints []string) Manager {
 	return &manager{
 		urls:          strings.Join(pdEndpoints, ","),
-		keyspaceMap:   make(map[string]*keyspacepb.KeyspaceMeta),
-		keyspaceIDMap: make(map[uint32]*keyspacepb.KeyspaceMeta),
+		keyspaceMap:   make(map[string]*keyspaceMeta),
+		keyspaceIDMap: make(map[uint32]*keyspaceMeta),
 		storageMap:    make(map[string]kv.Storage),
 	}
 }
@@ -52,20 +74,23 @@ type manager struct {
 	urls string
 
 	// TODO tenfyzhong 2025-09-16 23:46:01 update keyspaceMeta periodicity
-	keyspaceMap   map[string]*keyspacepb.KeyspaceMeta
-	keyspaceIDMap map[uint32]*keyspacepb.KeyspaceMeta
+	keyspaceMap   map[string]*keyspaceMeta
+	keyspaceIDMap map[uint32]*keyspaceMeta
 	keyspaceMu    sync.Mutex
 
 	storageMap map[string]kv.Storage
 	storageMu  sync.Mutex
 }
 
-var defaultKeyspaceMeta = &keyspacepb.KeyspaceMeta{
-	Name: common.DefaultKeyspace,
-	Id:   common.DefaultKeyspaceID,
+var defaultKeyspaceMeta = &keyspaceMeta{
+	meta: &keyspacepb.KeyspaceMeta{
+		Name: common.DefaultKeyspace,
+		Id:   common.DefaultKeyspaceID,
+	},
+	codec: nil,
 }
 
-func (k *manager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspacepb.KeyspaceMeta, error) {
+func (k *manager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspaceMeta, error) {
 	if kerneltype.IsClassic() {
 		return defaultKeyspaceMeta, nil
 	}
@@ -77,10 +102,13 @@ func (k *manager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspacep
 		return meta, nil
 	}
 
-	var err error
+	var (
+		err error
+		m   *keyspacepb.KeyspaceMeta
+	)
 	pdAPIClient := appcontext.GetService[pdutil.PDAPIClient](appcontext.PDAPIClient)
 	err = retry.Do(ctx, func() error {
-		meta, err = pdAPIClient.LoadKeyspace(ctx, keyspace)
+		m, err = pdAPIClient.LoadKeyspace(ctx, keyspace)
 		if err != nil {
 			return err
 		}
@@ -93,6 +121,11 @@ func (k *manager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspacep
 		return nil, errors.Trace(err)
 	}
 
+	codec, err := tikv.NewCodecV2(tikv.ModeTxn, m)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
 	k.keyspaceMu.Lock()
 	defer k.keyspaceMu.Unlock()
 	// Double check, another goroutine might have fetched and stored it.
@@ -100,13 +133,17 @@ func (k *manager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspacep
 		return meta, nil
 	}
 
+	meta = &keyspaceMeta{
+		meta:  m,
+		codec: codec,
+	}
 	k.keyspaceMap[keyspace] = meta
-	k.keyspaceIDMap[meta.Id] = meta
+	k.keyspaceIDMap[meta.meta.Id] = meta
 
 	return meta, nil
 }
 
-func (k *manager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspacepb.KeyspaceMeta, error) {
+func (k *manager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspaceMeta, error) {
 	if kerneltype.IsClassic() {
 		return defaultKeyspaceMeta, nil
 	}
@@ -118,10 +155,13 @@ func (k *manager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keys
 		return meta, nil
 	}
 
-	var err error
+	var (
+		err error
+		m   *keyspacepb.KeyspaceMeta
+	)
 	pdAPIClient := appcontext.GetService[pdutil.PDAPIClient](appcontext.PDAPIClient)
 	err = retry.Do(ctx, func() error {
-		meta, err = pdAPIClient.GetKeyspaceMetaByID(ctx, keyspaceID)
+		m, err = pdAPIClient.GetKeyspaceMetaByID(ctx, keyspaceID)
 		if err != nil {
 			return err
 		}
@@ -134,6 +174,11 @@ func (k *manager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keys
 		return nil, errors.Trace(err)
 	}
 
+	codec, err := tikv.NewCodecV2(tikv.ModeTxn, m)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
 	k.keyspaceMu.Lock()
 	defer k.keyspaceMu.Unlock()
 	// Double check, another goroutine might have fetched and stored it.
@@ -141,7 +186,11 @@ func (k *manager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keys
 		return meta, nil
 	}
 
-	k.keyspaceMap[meta.Name] = meta
+	meta = &keyspaceMeta{
+		meta:  m,
+		codec: codec,
+	}
+	k.keyspaceMap[meta.meta.Name] = meta
 	k.keyspaceIDMap[keyspaceID] = meta
 
 	return meta, nil

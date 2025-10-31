@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	keyspacepb "github.com/pingcap/kvproto/pkg/keyspacepb"
 	kv "github.com/pingcap/tidb/pkg/kv"
 )
 
@@ -49,10 +48,10 @@ func (mr *MockManagerMockRecorder) Close() *gomock.Call {
 }
 
 // GetKeyspaceByID mocks base method.
-func (m *MockManager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspacepb.KeyspaceMeta, error) {
+func (m *MockManager) GetKeyspaceByID(ctx context.Context, keyspaceID uint32) (*keyspaceMeta, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetKeyspaceByID", ctx, keyspaceID)
-	ret0, _ := ret[0].(*keyspacepb.KeyspaceMeta)
+	ret0, _ := ret[0].(*keyspaceMeta)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -79,10 +78,10 @@ func (mr *MockManagerMockRecorder) GetStorage(keyspace interface{}) *gomock.Call
 }
 
 // LoadKeyspace mocks base method.
-func (m *MockManager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspacepb.KeyspaceMeta, error) {
+func (m *MockManager) LoadKeyspace(ctx context.Context, keyspace string) (*keyspaceMeta, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoadKeyspace", ctx, keyspace)
-	ret0, _ := ret[0].(*keyspacepb.KeyspaceMeta)
+	ret0, _ := ret[0].(*keyspaceMeta)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
