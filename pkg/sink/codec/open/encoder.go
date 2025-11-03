@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"sync"
 
 	"github.com/pingcap/log"
 	commonEvent "github.com/pingcap/ticdc/pkg/common/event"
@@ -30,11 +29,6 @@ import (
 
 const (
 	batchVersion1 uint64 = 1
-)
-
-var (
-	lock             sync.RWMutex
-	columnFlagsCache = make(map[int64]map[string]uint64, 32)
 )
 
 // batchEncoder for open protocol will batch multiple row changed events into a single message.
@@ -55,9 +49,6 @@ func NewBatchEncoder(ctx context.Context, config *common.Config) (common.EventEn
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	lock.Lock()
-	clear(columnFlagsCache)
-	lock.Unlock()
 	return &batchEncoder{
 		config:     config,
 		claimCheck: claimCheck,
@@ -70,26 +61,13 @@ func (d *batchEncoder) Clean() {
 	}
 }
 
-func (d *batchEncoder) fetchColumnFlags(e *commonEvent.RowEvent) map[string]uint64 {
-	lock.RLock()
-	result, ok := columnFlagsCache[e.GetTableID()]
-	lock.RUnlock()
-	if !ok {
-		result = initColumnFlags(e.TableInfo)
-		lock.Lock()
-		columnFlagsCache[e.GetTableID()] = result
-		lock.Unlock()
-	}
-	return result
-}
-
 // AppendRowChangedEvent implements the RowEventEncoder interface
 func (d *batchEncoder) AppendRowChangedEvent(
 	ctx context.Context,
 	_ string,
 	e *commonEvent.RowEvent,
 ) error {
-	columnFlags := d.fetchColumnFlags(e)
+	columnFlags := initColumnFlags(e.TableInfo)
 	key, value, length, err := encodeRowChangedEvent(e, columnFlags, d.config, false, "")
 	if err != nil {
 		return errors.Trace(err)
@@ -234,10 +212,6 @@ func enhancedKeyValue(key, value []byte) ([]byte, []byte) {
 }
 
 func (d *batchEncoder) EncodeDDLEvent(e *commonEvent.DDLEvent) (*common.Message, error) {
-	lock.Lock()
-	delete(columnFlagsCache, e.TableID)
-	defer lock.Unlock()
-
 	key, value, err := encodeDDLEvent(e, d.config)
 	if err != nil {
 		return nil, errors.Trace(err)
