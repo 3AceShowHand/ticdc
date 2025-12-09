@@ -261,13 +261,11 @@ func (oc *Controller) pollQueueingOperator() (
 		metrics.OperatorCount.WithLabelValues(common.DefaultKeyspaceNamme, oc.changefeedID.Name(), op.Type(), common.StringMode(oc.mode)).Dec()
 		metrics.OperatorDuration.WithLabelValues(common.DefaultKeyspaceNamme, oc.changefeedID.Name(), op.Type(), common.StringMode(oc.mode)).Observe(time.Since(item.CreatedAt).Seconds())
 		log.Info("operator finished",
-			zap.String("role", oc.role),
-			zap.Stringer("changefeedID", oc.changefeedID),
-			zap.String("operatorID", opID.String()),
-			zap.String("operator", op.String()))
+			zap.String("role", oc.role), zap.Stringer("changefeedID", oc.changefeedID),
+			zap.Stringer("dispatcherID", opID), zap.Stringer("operator", op))
 		return nil, true
 	}
-	// log warn message for stil running operator
+	// log warn message for still running operator
 	if time.Since(item.CreatedAt) > time.Second*30 {
 		now := time.Now()
 		oc.mu.Lock()
@@ -280,10 +278,8 @@ func (oc *Controller) pollQueueingOperator() (
 
 		if shouldWarn {
 			log.Warn("operator is still in running queue",
-				zap.Stringer("changefeedID", oc.changefeedID),
-				zap.String("operator", opID.String()),
-				zap.String("operator", op.String()),
-				zap.Any("timeSinceCreated", time.Since(item.CreatedAt)))
+				zap.Stringer("changefeedID", oc.changefeedID), zap.Stringer("dispatcherID", opID),
+				zap.Stringer("operator", op), zap.Any("timeSinceCreated", time.Since(item.CreatedAt)))
 		}
 	}
 	now := time.Now()
