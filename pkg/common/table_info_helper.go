@@ -254,6 +254,8 @@ func (s *SharedColumnSchemaStorage) GetOrSetColumnSchema(tableInfo *model.TableI
 		SharedColumnSchemaCountGauge.Inc()
 		s.m[digest] = make([]ColumnSchemaWithCount, 1)
 		s.m[digest][0] = *NewColumnSchemaWithCount(columnSchema)
+		log.Info("add new columnSchema to the shared storage",
+			zap.String("table", tableInfo.Name.O), zap.Any("digest", digest))
 		return columnSchema
 	} else {
 		for idx, colSchemaWithCount := range colSchemas {
@@ -267,6 +269,8 @@ func (s *SharedColumnSchemaStorage) GetOrSetColumnSchema(tableInfo *model.TableI
 		columnSchema := newColumnSchema(tableInfo, digest)
 		SharedColumnSchemaCountGauge.Inc()
 		s.m[digest] = append(s.m[digest], *NewColumnSchemaWithCount(columnSchema))
+		log.Info("reuse columnSchema",
+			zap.String("table", tableInfo.Name.O), zap.Any("digest", digest))
 		return columnSchema
 	}
 }
