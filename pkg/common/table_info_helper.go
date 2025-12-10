@@ -463,7 +463,6 @@ func newColumnSchema(tableInfo *model.TableInfo, digest Digest) *columnSchema {
 					colSchema.HandleKeyIDs[id] = struct{}{}
 					colSchema.HandleColID = append(colSchema.HandleColID, id)
 				}
-
 			}
 		} else {
 			colSchema.VirtualColumnsOffset = append(colSchema.VirtualColumnsOffset, i)
@@ -478,9 +477,24 @@ func newColumnSchema(tableInfo *model.TableInfo, digest Digest) *columnSchema {
 		colSchema.RowColFieldTpsSlice = append(colSchema.RowColFieldTpsSlice, colSchema.RowColInfos[i].Ft)
 	}
 
+	log.Info("new column schema, before set index columns",
+		zap.String("table", tableInfo.Name.O),
+		zap.Bool("PKIsHandle", tableInfo.PKIsHandle),
+		zap.Bool("IsCommonHandle", tableInfo.IsCommonHandle),
+		zap.Any("HandleKeyIDs", colSchema.HandleKeyIDs),
+		zap.Any("HandleColIDs", colSchema.HandleColID))
+
 	colSchema.initRowColInfosWithoutVirtualCols()
 	colSchema.InitPreSQLs(tableInfo.Name.O)
 	colSchema.initIndexColumns()
+
+	log.Info("new column schema, after set index columns",
+		zap.String("table", tableInfo.Name.O),
+		zap.Bool("PKIsHandle", tableInfo.PKIsHandle),
+		zap.Bool("IsCommonHandle", tableInfo.IsCommonHandle),
+		zap.Any("HandleKeyIDs", colSchema.HandleKeyIDs),
+		zap.Any("HandleColIDs", colSchema.HandleColID))
+
 	return colSchema
 }
 
@@ -631,6 +645,7 @@ func (s *columnSchema) initIndexColumns() {
 			}
 			if handleIndexOffset < 0 {
 				handleIndexOffset = i
+				log.Info("handleIndexOffset is set", zap.Int("index", i), zap.String("indexName", idx.Name.O))
 			} else {
 				if len(s.Indices[handleIndexOffset].Columns) > len(s.Indices[i].Columns) ||
 					(len(s.Indices[handleIndexOffset].Columns) == len(s.Indices[i].Columns) &&
@@ -652,6 +667,7 @@ func (s *columnSchema) initIndexColumns() {
 		colID := s.Columns[col.Offset].ID
 		s.HandleKeyIDs[colID] = struct{}{}
 		s.HandleColID = append(s.HandleColID, colID)
+		log.Info("append handle ids", zap.Int64("colID", colID))
 	}
 }
 
