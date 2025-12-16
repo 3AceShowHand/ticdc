@@ -16,6 +16,7 @@ package schemastore
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
@@ -32,11 +33,14 @@ import (
 func VerifyTables(f filter.Filter, storage tidbkv.Storage, startTs uint64) (
 	[]*common.TableInfo, []string, []string, error,
 ) {
+	start := time.Now()
 	meta := getSnapshotMeta(storage, startTs)
 	dbinfos, err := meta.ListDatabases()
 	if err != nil {
 		return nil, nil, nil, cerror.WrapError(cerror.ErrMetaListDatabases, err)
 	}
+	listDBDuration := time.Since(start)
+
 	tableInfos := make([]*common.TableInfo, 0)
 	ineligibleTables := make([]string, 0)
 	eligibleTables := make([]string, 0)
@@ -86,6 +90,12 @@ func VerifyTables(f filter.Filter, storage tidbkv.Storage, startTs uint64) (
 			}
 		}
 	}
+
+	log.Info("verify tables finished",
+		zap.Int("eligibleCount", len(eligibleTables)),
+		zap.Int("ineligibleCount", len(ineligibleTables)),
+		zap.Duration("listDBDuration", listDBDuration),
+		zap.Duration("duration", time.Since(start)))
 
 	return tableInfos, ineligibleTables, eligibleTables, nil
 }

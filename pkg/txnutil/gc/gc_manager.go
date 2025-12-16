@@ -99,10 +99,11 @@ func (m *gcManager) TryUpdateGCSafePoint(
 	}
 	m.lastUpdatedTime.Store(time.Now())
 
-	actual, err := SetServiceGCSafepoint(ctx, m.pdClient, m.gcServiceID, m.gcTTL, checkpointTs)
+	gcSafePoint, err := SetServiceGCSafepoint(ctx, m.pdClient, m.gcServiceID, m.gcTTL, checkpointTs)
 	if err != nil {
 		log.Warn("updateGCSafePoint failed",
-			zap.Uint64("safePointTs", checkpointTs),
+			zap.Uint64("actual", gcSafePoint),
+			zap.Uint64("expected", checkpointTs),
 			zap.Error(err))
 		if time.Since(m.lastSucceededTime.Load()) >= time.Second*time.Duration(m.gcTTL) {
 			return errors.ErrUpdateServiceSafepointFailed.Wrap(err)
@@ -110,28 +111,28 @@ func (m *gcManager) TryUpdateGCSafePoint(
 		return nil
 	}
 	failpoint.Inject("InjectActualGCSafePoint", func(val failpoint.Value) {
-		actual = uint64(val.(int))
+		gcSafePoint = uint64(val.(int))
 	})
 
 	log.Debug("update gc safe point",
 		zap.String("gcServiceID", m.gcServiceID),
-		zap.Uint64("checkpointTs", checkpointTs),
-		zap.Uint64("actual", actual))
+		zap.Uint64("actual", gcSafePoint),
+		zap.Uint64("expected", checkpointTs))
 
-	if actual == checkpointTs {
-		log.Info("update gc safe point success", zap.Uint64("gcSafePointTs", checkpointTs))
+	if gcSafePoint == checkpointTs {
+		log.Info("update gc safe point success", zap.Uint64("actual", checkpointTs))
 	}
-	if actual > checkpointTs {
+	if gcSafePoint > checkpointTs {
 		log.Warn("update gc safe point failed, the gc safe point is larger than checkpointTs",
-			zap.Uint64("actual", actual), zap.Uint64("checkpointTs", checkpointTs))
+			zap.Uint64("actual", gcSafePoint), zap.Uint64("expected", checkpointTs))
 	}
 	// if the min checkpoint ts is equal to the current gc safe point, it
 	// means that the service gc safe point set by TiCDC is the min service
 	// gc safe point
-	m.isTiCDCBlockGC.Store(actual == checkpointTs)
-	m.lastSafePointTs.Store(actual)
+	m.isTiCDCBlockGC.Store(gcSafePoint == checkpointTs)
+	m.lastSafePointTs.Store(gcSafePoint)
 	m.lastSucceededTime.Store(time.Now())
-	minServiceGCSafePointGauge.Set(float64(oracle.ExtractPhysical(actual)))
+	minServiceGCSafePointGauge.Set(float64(oracle.ExtractPhysical(gcSafePoint)))
 	cdcGCSafePointGauge.Set(float64(oracle.ExtractPhysical(checkpointTs)))
 	return nil
 }
