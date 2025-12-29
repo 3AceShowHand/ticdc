@@ -165,7 +165,9 @@ type Maintainer struct {
 }
 
 // NewMaintainer create the maintainer for the changefeed
-func NewMaintainer(cfID common.ChangeFeedID,
+func NewMaintainer(
+	ctx context.Context,
+	cfID common.ChangeFeedID,
 	conf *config.SchedulerConfig,
 	info *config.ChangeFeedInfo,
 	selfNode *node.Info,
@@ -249,7 +251,7 @@ func NewMaintainer(cfID common.ChangeFeedID,
 	)
 
 	metrics.MaintainerGauge.WithLabelValues(keyspaceName, name).Inc()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 
 	go m.runHandleEvents(ctx)
@@ -275,7 +277,9 @@ func NewMaintainer(cfID common.ChangeFeedID,
 	return m
 }
 
-func NewMaintainerForRemove(cfID common.ChangeFeedID,
+func NewMaintainerForRemove(
+	ctx context.Context,
+	cfID common.ChangeFeedID,
 	conf *config.SchedulerConfig,
 	selfNode *node.Info,
 	taskScheduler threadpool.ThreadPool,
@@ -286,7 +290,7 @@ func NewMaintainerForRemove(cfID common.ChangeFeedID,
 		SinkURI:      "",
 		Config:       config.GetDefaultReplicaConfig(),
 	}
-	m := NewMaintainer(cfID, conf, unused, selfNode, taskScheduler, 1, false, keyspaceID)
+	m := NewMaintainer(ctx, cfID, conf, unused, selfNode, taskScheduler, 1, false, keyspaceID)
 	m.cascadeRemoving.Store(true)
 	return m
 }

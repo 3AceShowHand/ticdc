@@ -87,7 +87,7 @@ func (m *Manager) recvMessages(ctx context.Context, msg *messaging.TargetMessage
 		messaging.TypeCoordinatorBootstrapRequest:
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case m.msgCh <- msg:
 		}
 		return nil
@@ -129,9 +129,9 @@ func (m *Manager) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case msg := <-m.msgCh:
-			m.handleMessage(msg)
+			m.handleMessage(ctx, msg)
 		case <-ticker.C:
 			// 1.  try to send heartbeat to coordinator
 			m.sendHeartbeat()
@@ -216,11 +216,11 @@ func (m *Manager) onCoordinatorBootstrapRequest(msg *messaging.TargetMessage) {
 		zap.Int64("version", m.coordinatorVersion))
 }
 
-func (m *Manager) onAddMaintainerRequest(req *heartbeatpb.AddMaintainerRequest) *heartbeatpb.MaintainerStatus {
+func (m *Manager) onAddMaintainerRequest(ctx context.Context, req *heartbeatpb.AddMaintainerRequest) {
 	changefeedID := common.NewChangefeedIDFromPB(req.Id)
 	_, ok := m.maintainers.Load(changefeedID)
 	if ok {
-		return nil
+		return
 	}
 
 	info := &config.ChangeFeedInfo{}
@@ -235,13 +235,12 @@ func (m *Manager) onAddMaintainerRequest(req *heartbeatpb.AddMaintainerRequest) 
 			zap.Any("info", info))
 	}
 
-	maintainer := NewMaintainer(changefeedID, m.conf, info, m.nodeInfo, m.taskScheduler, req.CheckpointTs, req.IsNewChangefeed, req.KeyspaceId)
+	maintainer := NewMaintainer(ctx, changefeedID, m.conf, info, m.nodeInfo, m.taskScheduler, req.CheckpointTs, req.IsNewChangefeed, req.KeyspaceId)
 	m.maintainers.Store(changefeedID, maintainer)
 	maintainer.pushEvent(&Event{changefeedID: changefeedID, eventType: EventInit})
-	return nil
 }
 
-func (m *Manager) onRemoveMaintainerRequest(msg *messaging.TargetMessage) *heartbeatpb.MaintainerStatus {
+func (m *Manager) onRemoveMaintainerRequest(ctx context.Context, msg *messaging.TargetMessage) *heartbeatpb.MaintainerStatus {
 	req := msg.Message[0].(*heartbeatpb.RemoveMaintainerRequest)
 	changefeedID := common.NewChangefeedIDFromPB(req.GetId())
 	maintainer, ok := m.maintainers.Load(changefeedID)
@@ -259,7 +258,7 @@ func (m *Manager) onRemoveMaintainerRequest(msg *messaging.TargetMessage) *heart
 
 		// it's cascade remove, we should remove the dispatcher from all node
 		// here we create a maintainer to run the remove the dispatcher logic
-		maintainer = NewMaintainerForRemove(changefeedID, m.conf, m.nodeInfo, m.taskScheduler, req.KeyspaceId)
+		maintainer = NewMaintainerForRemove(ctx, changefeedID, m.conf, m.nodeInfo, m.taskScheduler, req.KeyspaceId)
 		m.maintainers.Store(changefeedID, maintainer)
 	}
 	maintainer.(*Maintainer).pushEvent(&Event{
@@ -273,6 +272,7 @@ func (m *Manager) onRemoveMaintainerRequest(msg *messaging.TargetMessage) *heart
 }
 
 func (m *Manager) onDispatchMaintainerRequest(
+	ctx context.Context,
 	msg *messaging.TargetMessage,
 ) *heartbeatpb.MaintainerStatus {
 	if m.coordinatorID != msg.From {
@@ -285,9 +285,9 @@ func (m *Manager) onDispatchMaintainerRequest(
 	switch msg.Type {
 	case messaging.TypeAddMaintainerRequest:
 		req := msg.Message[0].(*heartbeatpb.AddMaintainerRequest)
-		return m.onAddMaintainerRequest(req)
+		m.onAddMaintainerRequest(ctx, req)
 	case messaging.TypeRemoveMaintainerRequest:
-		return m.onRemoveMaintainerRequest(msg)
+		return m.onRemoveMaintainerRequest(ctx, msg)
 	default:
 		log.Warn("unknown message type", zap.Any("message", msg.Message))
 	}
@@ -314,14 +314,14 @@ func (m *Manager) sendHeartbeat() {
 	}
 }
 
-func (m *Manager) handleMessage(msg *messaging.TargetMessage) {
+func (m *Manager) handleMessage(ctx context.Context, msg *messaging.TargetMessage) {
 	switch msg.Type {
 	case messaging.TypeCoordinatorBootstrapRequest:
 		m.onCoordinatorBootstrapRequest(msg)
 	case messaging.TypeAddMaintainerRequest,
 		messaging.TypeRemoveMaintainerRequest:
 		if m.isBootstrap() {
-			status := m.onDispatchMaintainerRequest(msg)
+			status := m.onDispatchMaintainerRequest(ctx, msg)
 			if status == nil {
 				return
 			}
@@ -346,7 +346,7 @@ func (m *Manager) dispatcherMaintainerMessage(
 	}
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return context.Cause(ctx)
 	default:
 		maintainer := c.(*Maintainer)
 		maintainer.pushEvent(&Event{
