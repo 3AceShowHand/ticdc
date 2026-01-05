@@ -135,8 +135,7 @@ func UnifyGetServiceGCSafepoint(ctx context.Context, pdCli pd.Client, keyspaceID
 		return SetServiceGCSafepoint(ctx, pdCli, serviceID, 0, 0)
 	}
 
-	gcCli := pdCli.GetGCStatesClient(keyspaceID)
-	gcState, err := getGCState(ctx, gcCli)
+	gcState, err := pdCli.GetGCStatesClient(keyspaceID).GetGCState(ctx)
 	if err != nil {
 		return 0, errors.Trace(errors.ErrGetGCBarrierFailed)
 	}
@@ -174,10 +173,6 @@ func SetGCBarrier(ctx context.Context, gcCli gc.GCStatesClient, serviceID string
 		retry.WithMaxTries(gcServiceMaxRetries),
 		retry.WithIsRetryableErr(errors.IsRetryableError))
 	return barrierTS, err
-}
-
-func getGCState(ctx context.Context, gcCli gc.GCStatesClient) (gc.GCState, error) {
-	return gcCli.GetGCState(ctx)
 }
 
 // DeleteGCBarrier Delete a GC barrier of a keyspace
