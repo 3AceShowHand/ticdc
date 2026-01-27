@@ -14,6 +14,7 @@
 package canal
 
 import (
+	"net/url"
 	"testing"
 
 	commonEvent "github.com/pingcap/ticdc/pkg/common/event"
@@ -28,6 +29,40 @@ func TestBuildCanalJSONTxnEventEncoder(t *testing.T) {
 
 	encoder := NewJSONTxnEventEncoder(cfg)
 	require.NotNil(t, encoder)
+}
+
+func TestCanalJSONTxnEncoderOutputRowKey(t *testing.T) {
+	codecConfig := common.NewConfig(config.ProtocolCanalJSON)
+
+	rawURL := "file://tmp/storage-test?protocol=canal-json&enable-tidb-extension=true&output-row-key=true"
+	sinkURL, err := url.Parse(rawURL)
+	require.NoError(t, err)
+
+	sinkConfig := &config.SinkConfig{}
+
+	err = codecConfig.Apply(sinkURL, sinkConfig)
+	require.NoError(t, err)
+
+	require.True(t, codecConfig.EnableTiDBExtension)
+	require.True(t, codecConfig.OutputRowKey)
+
+	helper := commonEvent.NewEventTestHelper(t)
+	defer helper.Close()
+
+	sql := `create table test.t(a varchar(255) primary key)`
+	_ = helper.DDL2Event(sql)
+
+	event := helper.DML2Event("test", "t", `insert into test.t values("aa")`, `insert into test.t values("bb")`)
+
+	encoder := NewJSONTxnEventEncoder(codecConfig)
+	require.NotNil(t, encoder)
+
+	err = encoder.AppendTxnEvent(event)
+	require.NoError(t, err)
+
+	msgs := encoder.Build()
+	require.Len(t, msgs, 1, "expected one message")
+
 }
 
 func TestCanalJSONTxnEventEncoderMaxMessageBytes(t *testing.T) {
