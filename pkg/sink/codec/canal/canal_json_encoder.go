@@ -314,6 +314,10 @@ func newJSONMessageForDML(
 		log.Panic("unreachable event type", zap.Any("event", e))
 	}
 
+	log.Info("canal-json new dml message",
+		zap.Bool("enable-tidb-extension", config.EnableTiDBExtension),
+		zap.Bool("output-row-key", config.OutputRowKey))
+
 	if config.EnableTiDBExtension {
 		const prefix string = ",\"_tidb\":"
 		out.RawString(prefix)

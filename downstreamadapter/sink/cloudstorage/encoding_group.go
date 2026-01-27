@@ -16,12 +16,14 @@ package cloudstorage
 import (
 	"context"
 
+	"github.com/pingcap/log"
 	commonType "github.com/pingcap/ticdc/pkg/common"
 	"github.com/pingcap/ticdc/pkg/errors"
 	"github.com/pingcap/ticdc/pkg/sink/codec"
 	"github.com/pingcap/ticdc/pkg/sink/codec/common"
 	"github.com/pingcap/ticdc/utils/chann"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -61,6 +63,9 @@ func newEncodingGroup(
 }
 
 func (eg *encodingGroup) Run(ctx context.Context) error {
+	log.Info("encoder group build encoders",
+		zap.Bool("enable-tidb-extension", eg.codecConfig.EnableTiDBExtension),
+		zap.Bool("output-row-key", eg.codecConfig.OutputRowKey))
 	g, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < eg.concurrency; i++ {
 		g.Go(func() error {

@@ -54,6 +54,9 @@ func NewJSONTxnEventEncoder(config *common.Config) common.TxnEventEncoder {
 
 // AppendTxnEvent appends a txn event to the encoder.
 func (j *JSONTxnEventEncoder) AppendTxnEvent(event *commonEvent.DMLEvent) error {
+	log.Info("txn-canal-json-encoder build messages",
+		zap.Bool("enable-tidb-extension", j.config.EnableTiDBExtension),
+		zap.Bool("output-row-key", j.config.OutputRowKey))
 	for {
 		row, ok := event.GetNextRow()
 		if !ok {

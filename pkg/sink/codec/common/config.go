@@ -318,19 +318,20 @@ func mergeConfig(
 		}
 		if sinkConfig.KafkaConfig != nil {
 			dest.MaxMessageBytes = sinkConfig.KafkaConfig.MaxMessageBytes
-			if sinkConfig.KafkaConfig.CodecConfig != nil {
-				codecConfig := sinkConfig.KafkaConfig.CodecConfig
-				dest.EnableTiDBExtension = codecConfig.EnableTiDBExtension
-				dest.MaxBatchSize = codecConfig.MaxBatchSize
-				dest.AvroEnableWatermark = codecConfig.AvroEnableWatermark
-				dest.AvroDecimalHandlingMode = codecConfig.AvroDecimalHandlingMode
-				dest.AvroBigintUnsignedHandlingMode = codecConfig.AvroBigintUnsignedHandlingMode
-				dest.EncodingFormatType = codecConfig.EncodingFormat
+				if sinkConfig.KafkaConfig.CodecConfig != nil {
+					codecConfig := sinkConfig.KafkaConfig.CodecConfig
+					dest.EnableTiDBExtension = codecConfig.EnableTiDBExtension
+					dest.MaxBatchSize = codecConfig.MaxBatchSize
+					dest.AvroEnableWatermark = codecConfig.AvroEnableWatermark
+					dest.AvroDecimalHandlingMode = codecConfig.AvroDecimalHandlingMode
+					dest.AvroBigintUnsignedHandlingMode = codecConfig.AvroBigintUnsignedHandlingMode
+					dest.EncodingFormatType = codecConfig.EncodingFormat
+					dest.OutputRowKey = codecConfig.OutputRowKey
+				}
 			}
-		}
-		if sinkConfig.DebeziumDisableSchema != nil {
-			dest.DebeziumDisableSchema = sinkConfig.DebeziumDisableSchema
-		}
+			if sinkConfig.DebeziumDisableSchema != nil {
+				dest.DebeziumDisableSchema = sinkConfig.DebeziumDisableSchema
+			}
 	}
 	if err := mergo.Merge(dest, urlParameters, mergo.WithOverride); err != nil {
 		return nil, err

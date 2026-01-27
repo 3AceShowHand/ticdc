@@ -115,6 +115,10 @@ func New(
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+	log.Info("storage sink build encoder config",
+		zap.Bool("enable-tidb-extension", encoderConfig.EnableTiDBExtension),
+		zap.Bool("output-row-key", encoderConfig.OutputRowKey))
+
 	storage, err := putil.GetExternalStorageWithDefaultTimeout(ctx, sinkURI.String())
 	if err != nil {
 		return nil, err
