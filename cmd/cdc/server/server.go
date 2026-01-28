@@ -42,6 +42,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var tiflowServerRun = tiflowServer.Run
+
 // options defines flags for the `server` command.
 type options struct {
 	serverConfig         *config.ServerConfig
@@ -340,7 +342,7 @@ func runTiFlowServer(o *options, cmd *cobra.Command) error {
 	oldOptions.KeyPath = o.keyPath
 	oldOptions.AllowedCertCN = o.allowedCertCN
 
-	return tiflowServer.Run(&oldOptions, cmd)
+	return tiflowServerRun(&oldOptions, cmd)
 }
 
 // NewCmdServer creates the `server` command.
