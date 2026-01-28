@@ -317,7 +317,7 @@ func runTiFlowServer(o *options, cmd *cobra.Command) error {
 	// In old architecture mode, complete() is not called, so we need to transfer
 	// TLS credentials (--ca, --cert, --key) to serverConfig.Security here.
 	// Without this, the Security struct is empty and tiflow uses HTTP instead of HTTPS.
-	// o.serverConfig.Security = o.getCredential()
+	o.serverConfig.Security = o.getCredential()
 
 	cfgData, err := json.Marshal(o.serverConfig)
 	if err != nil {
