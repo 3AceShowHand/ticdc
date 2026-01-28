@@ -16,6 +16,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -334,6 +335,9 @@ func runTiFlowServer(o *options, cmd *cobra.Command) error {
 	oldOptions.ServerConfig = &oldCfg
 	oldOptions.ServerPdAddr = strings.Join(o.pdEndpoints, ",")
 	oldOptions.ServerConfigFilePath = o.serverConfigFilePath
+
+	log.Info("oldOptions", zap.Any("serverConfig", oldOptions.ServerConfig))
+	fmt.Printf("old option is %v", oldOptions.ServerConfig)
 
 	return tiflowServer.Run(&oldOptions, cmd)
 }
