@@ -122,6 +122,20 @@ Introduce Python dashboard source files under `metrics/grafana/`:
 dashboard. `metrics/grafana/ticdc_new_arch.json` remains checked in, but only as
 generated output.
 
+The Python source contract is:
+
+- `metrics/grafana/ticdc_new_arch.dashboard.py` defines a top-level function
+  `build_dashboard() -> dict`
+- `metrics/grafana/common.py` contains plain helper functions/constants only
+- `scripts/gen-ticdc-dashboards` loads the dashboard file via `runpy.run_path`
+  so the `.dashboard.py` filename can be kept without relying on importable
+  module naming
+- before loading, the generator prepends `metrics/grafana/` to `sys.path` so
+  `common.py` can be imported deterministically by the dashboard source
+
+Using a function-based contract instead of a module-global `DASHBOARD` object
+keeps generation explicit and allows lightweight validation before writing JSON.
+
 ### Generated Artifacts
 
 The repository continues to check in all three JSON dashboards:
@@ -146,8 +160,9 @@ Responsibilities:
 
 1. Run with `python3` from the host environment; no `pip` downloads are
    required during generation.
-2. Require a minimum host interpreter of Python 3.10 so dict insertion order
-   and stdlib behavior are well defined across developer and CI environments.
+2. Require a minimum host interpreter of Python 3.8, which is sufficient for
+   ordered dictionaries and is available on GitHub-hosted `ubuntu-latest`
+   runners used by the existing `make check` workflows.
 3. Generate `metrics/grafana/ticdc_new_arch.json` from
    `metrics/grafana/ticdc_new_arch.dashboard.py`.
 4. Call `scripts/generate-next-gen-metrics.sh` to derive the two next-gen
@@ -165,6 +180,9 @@ dependency bootstrap problem into `make check`.
 Formatting of Python source is out of scope for the generator in this phase.
 The generator should not install or invoke formatters. If formatting automation
 is needed later, it should be added as a separate developer-facing step.
+
+The generator should perform a preflight Python version check and fail fast with
+a clear error message when run with an older local interpreter.
 
 ### Validation Entry Point
 
@@ -245,12 +263,25 @@ scripts/gen-ticdc-dashboards
 JSON serialization should be deterministic:
 
 - preserve explicit key insertion order from the Python source model
-- use stable indentation matching repository JSON style
+- use `json.dump(..., indent=2, ensure_ascii=False, sort_keys=False)`
 - write a trailing newline at end of file
 - do not rely on key sorting to achieve determinism
 
-Checksum files should use the same line format expected by `sha256sum -c`, so
-the validation script can verify them directly.
+Checksum files should use a single-line text format:
+
+```text
+<hex sha256><two spaces><relative path from repo root>
+```
+
+Example:
+
+```text
+0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  metrics/grafana/ticdc_new_arch.json
+```
+
+Checksum generation and verification should be implemented in Python with
+`hashlib`, not by shelling out to `sha256sum` or `shasum`. This avoids adding a
+new platform-specific dependency to local `make check`.
 
 ## Validation Flow
 
@@ -282,6 +313,13 @@ Internally:
 - `make check` should continue to regenerate dashboard artifacts and then fail
   if `git diff --exit-code` is non-empty. That regeneration step, not checksum
   comparison alone, is what enforces that Python remains the source of truth.
+
+No GitHub Actions workflow change is required solely for Python setup if the
+implementation keeps the generator at `python3 >= 3.8`, because the current
+`ubuntu-latest` runners used by `.github/workflows/pr_build_and_test.yaml` and
+`.github/workflows/pr_build_and_test_classic.yaml` already provide a suitable
+`python3`. The implementation should still fail fast locally when the host
+interpreter is too old.
 
 ## Migration Plan
 
@@ -337,6 +375,18 @@ Verification for this change should include:
   - representative PromQL expressions
 - Compare the two next-gen outputs before and after migration to confirm that
   differences are limited to acceptable formatting or known cleanup.
+
+Acceptance criteria for generated artifacts:
+
+- base dashboard title, UID, datasource input name, templating variable names,
+  panel count, and query semantics remain unchanged
+- next-gen dashboard title and UID behavior remain consistent with the current
+  derivation script
+- byte-level JSON changes are allowed only where needed for:
+  - deterministic regeneration from Python source
+  - duplicate panel ID fixes
+  - layout overlap fixes
+  - atomically coordinated script updates called out in the invariant checklist
 
 ## Risks and Mitigations
 
