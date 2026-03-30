@@ -41,6 +41,10 @@ TiKV already solves this class of problem with:
 - a generator script that produces JSON and checksum files
 - a validation script that rejects manual JSON edits
 
+TiCDC will adopt the same workflow shape, but not necessarily the same Python
+implementation library. In this phase the priority is compatibility and
+deterministic output, not matching TiKV's exact helper stack.
+
 ## Goals
 
 - Make the base TiCDC dashboard generated from Python source.
@@ -75,6 +79,35 @@ The migration must preserve the following behavior:
   `scripts/generate-next-gen-metrics.sh`, especially replacements involving
   `namespace` and `tidb_cluster`.
 - Existing CI and developer entry points in the Makefile.
+
+### Invariant Checklist
+
+Unless changed atomically with the next-gen derivation script and its tests, the
+generated base dashboard must preserve these concrete invariants:
+
+- base dashboard path: `metrics/grafana/ticdc_new_arch.json`
+- datasource input name: `DS_TEST-CLUSTER`
+- current base title: `test-cluster-TiCDC-New-Arch`
+- current base UID: `YiGL8hBZ0aac`
+- current templating variables:
+  - `k8s_cluster`
+  - `tidb_cluster`
+  - `namespace`
+  - `changefeed`
+  - `ticdc_instance`
+  - `tikv_instance`
+  - `spike_threshold`
+  - `runtime_instance`
+- the literal token `namespace` must still exist in the base JSON where the
+  next-gen derivation expects to rewrite it to `keyspace_name`
+- the literal token `tidb_cluster` must still exist in the base JSON where the
+  sharedscope derivation expects to rewrite it to `sharedpool_id`
+- the current userscope UID replacement in
+  `scripts/generate-next-gen-metrics.sh` must still have a valid source anchor
+  unless the script is updated atomically
+- the current userscope title rewrite in
+  `scripts/generate-next-gen-metrics.sh` must either continue to be harmless or
+  be updated atomically if the script is simplified during implementation
 
 ## Proposed Architecture
 
@@ -111,8 +144,10 @@ Add a single generation entry point:
 
 Responsibilities:
 
-1. Prepare a reproducible Python environment for dashboard generation.
-2. Format Python dashboard sources.
+1. Run with `python3` from the host environment; no `pip` downloads are
+   required during generation.
+2. Require a minimum host interpreter of Python 3.10 so dict insertion order
+   and stdlib behavior are well defined across developer and CI environments.
 3. Generate `metrics/grafana/ticdc_new_arch.json` from
    `metrics/grafana/ticdc_new_arch.dashboard.py`.
 4. Call `scripts/generate-next-gen-metrics.sh` to derive the two next-gen
@@ -121,6 +156,15 @@ Responsibilities:
 
 This keeps the current next-gen derivation pipeline intact while moving the
 base dashboard to dashboard-as-code.
+
+The generator should be stdlib-only. The dashboard Python source should build
+plain Python dictionaries/lists and serialize them with `json.dump`. This keeps
+the implementation deterministic and avoids introducing a separate Python
+dependency bootstrap problem into `make check`.
+
+Formatting of Python source is out of scope for the generator in this phase.
+The generator should not install or invoke formatters. If formatting automation
+is needed later, it should be added as a separate developer-facing step.
 
 ### Validation Entry Point
 
@@ -198,6 +242,16 @@ scripts/gen-ticdc-dashboards
             +--> *.sha256 for all three JSON files
 ```
 
+JSON serialization should be deterministic:
+
+- preserve explicit key insertion order from the Python source model
+- use stable indentation matching repository JSON style
+- write a trailing newline at end of file
+- do not rely on key sorting to achieve determinism
+
+Checksum files should use the same line format expected by `sha256sum -c`, so
+the validation script can verify them directly.
+
 ## Validation Flow
 
 The intended validation flow is:
@@ -208,6 +262,10 @@ scripts/check-ticdc-dashboard.sh
     +--> verify sha256 for all generated dashboard JSON files
     +--> python structural validation for all generated dashboard JSON files
 ```
+
+Checksum validation alone is not sufficient to enforce "Python source of truth"
+because a developer could edit both a JSON file and its `.sha256` file.
+Freshness enforcement must come from regeneration plus repository diff checks.
 
 The Makefile should continue to expose stable targets:
 
@@ -221,6 +279,9 @@ Internally:
   instead of only the current next-gen derivation step.
 - `check-ticdc-dashboard` should validate all generated dashboards, not only
   the base one.
+- `make check` should continue to regenerate dashboard artifacts and then fail
+  if `git diff --exit-code` is non-empty. That regeneration step, not checksum
+  comparison alone, is what enforces that Python remains the source of truth.
 
 ## Migration Plan
 
@@ -260,6 +321,8 @@ Internally:
 
 Verification for this change should include:
 
+- Run the unified generator on a clean tree and confirm a second run produces no
+  diff.
 - Run the unified generator and confirm it updates all three dashboards and all
   three checksum files deterministically.
 - Run the dashboard checker on all three JSON files.
@@ -268,6 +331,7 @@ Verification for this change should include:
   JSON:
   - title
   - UID
+  - datasource input shape and name
   - templating variable names and counts
   - panel count
   - representative PromQL expressions
