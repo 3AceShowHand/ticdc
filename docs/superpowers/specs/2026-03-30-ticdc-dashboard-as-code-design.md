@@ -197,8 +197,20 @@ Expand its responsibilities:
    - duplicate panel IDs
    - overlapping layout in each container
 
-Retain `scripts/check-ticdc-dashboard.py` as the structural validator, but make
-it accept multiple dashboard files instead of only the base JSON.
+Retain `scripts/check-ticdc-dashboard.py` as the single Python checker. In this
+phase it should own both:
+
+- checksum verification using stdlib `hashlib`
+- structural validation for multiple dashboard JSON files
+
+`scripts/check-ticdc-dashboard.sh` remains a thin shell wrapper that:
+
+- computes the repository root from the script location
+- works from any caller CWD
+- invokes `scripts/check-ticdc-dashboard.py` with repo-root-relative paths
+
+Relative paths recorded in `.sha256` files are interpreted relative to the
+repository root during verification.
 
 ## File Layout
 
@@ -221,6 +233,16 @@ Modified files:
 - `metrics/grafana/ticdc_new_arch.json`
 - `metrics/nextgengrafana/ticdc_new_arch_next_gen.json`
 - `metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json`
+
+`scripts/generate-next-gen-metrics.sh` may be modified only for non-functional
+adaptation in this phase:
+
+- repo-root/path handling
+- invocation compatibility with the unified generator
+- caller-CWD independence
+
+Its current `sed`/`jq` transformation semantics are not to be changed in this
+phase unless the change is explicitly reviewed as a compatibility fix.
 
 ## Python Source Model
 
@@ -313,6 +335,14 @@ Internally:
 - `make check` should continue to regenerate dashboard artifacts and then fail
   if `git diff --exit-code` is non-empty. That regeneration step, not checksum
   comparison alone, is what enforces that Python remains the source of truth.
+
+Minimal CLI surface:
+
+- `scripts/gen-ticdc-dashboards`
+  - regenerates the base dashboard, next-gen dashboards, and checksum files
+- `scripts/check-ticdc-dashboard.sh`
+  - runs checksum verification and structural checks only
+  - does not regenerate files
 
 No GitHub Actions workflow change is required solely for Python setup if the
 implementation keeps the generator at `python3 >= 3.8`, because the current
