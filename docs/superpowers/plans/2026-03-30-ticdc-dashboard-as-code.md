@@ -15,6 +15,7 @@
 **Files:**
 - Create: `metrics/grafana/common.py`
 - Create: `metrics/grafana/ticdc_new_arch.dashboard.py`
+- Create: `scripts/tests/__init__.py`
 - Create: `scripts/tests/test_ticdc_dashboard_tools.py`
 - Test: `scripts/tests/test_ticdc_dashboard_tools.py`
 
@@ -72,7 +73,7 @@ class DashboardToolsTest(unittest.TestCase):
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
 Expected:
@@ -87,36 +88,39 @@ Implement:
 - `metrics/grafana/common.py` with minimal helpers/constants only
 - `metrics/grafana/ticdc_new_arch.dashboard.py` exposing `build_dashboard() -> dict`
 
-Use a compatibility-first structure:
+Use a compatibility-first canonical structure:
 
 ```python
-from pathlib import Path
-import json
-
-
-def load_existing_dashboard() -> dict:
-    path = Path(__file__).with_name("ticdc_new_arch.json")
-    return json.loads(path.read_text(encoding="utf-8"))
+from common import DATASOURCE_INPUT
 
 
 def build_dashboard() -> dict:
-    dashboard = load_existing_dashboard()
-    return dashboard
+    return {
+        "__inputs": [DATASOURCE_INPUT],
+        "__requires": [...],
+        "annotations": {...},
+        "panels": [...],
+        "templating": {...},
+        "title": "test-cluster-TiCDC-New-Arch",
+        "uid": "YiGL8hBZ0aac",
+    }
 ```
 
 Notes for implementation:
 
-- Keep the first implementation minimal and green. It is acceptable to load the
-  current JSON as the first source-model step so tests can pass before the
-  generator is introduced.
-- Do not redesign the dashboard structure in this task.
+- `build_dashboard()` must not read any checked-in dashboard JSON at runtime
+- the current JSON may be used one time as migration input to mechanically
+  convert it into Python literals, but after this task the generated JSON must
+  come only from Python source
+- preserve current field order and values as closely as possible
+- do not redesign the dashboard structure in this task
 
 - [ ] **Step 4: Re-run the unit tests to verify the new Python contract works**
 
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
 Expected:
@@ -127,7 +131,7 @@ Expected:
 - [ ] **Step 5: Commit the source-model and test scaffold**
 
 ```bash
-git add metrics/grafana/common.py metrics/grafana/ticdc_new_arch.dashboard.py scripts/tests/test_ticdc_dashboard_tools.py
+git add metrics/grafana/common.py metrics/grafana/ticdc_new_arch.dashboard.py scripts/tests/__init__.py scripts/tests/test_ticdc_dashboard_tools.py
 git commit -m "metrics: add TiCDC dashboard source model scaffold"
 ```
 
@@ -152,6 +156,9 @@ Add tests for:
 - deterministic JSON writing with newline
 - checksum file generation in `<hex><two spaces><relative path>` format
 - repo-root-relative checksum verification
+- generator `sys.path` setup for `metrics/grafana/common.py`
+- checker default file set covering exactly the three dashboard JSON files and
+  three `.sha256` files
 
 Example additions:
 
@@ -175,7 +182,7 @@ Example additions:
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
 Expected:
@@ -189,6 +196,7 @@ Implement `scripts/gen-ticdc-dashboards` as a Python executable script with:
 
 - repo-root discovery from `__file__`
 - Python version preflight (`>= 3.8`)
+- `sys.path` prepend for `metrics/grafana/`
 - `runpy.run_path()` loading of `metrics/grafana/ticdc_new_arch.dashboard.py`
 - deterministic `json.dump(..., indent=2, ensure_ascii=False, sort_keys=False)`
 - trailing newline writes
@@ -200,6 +208,14 @@ Implement checker support in `scripts/check-ticdc-dashboard.py`:
 - add `check_checksums(repo_root, checksum_files) -> list[str]`
 - keep duplicate-ID and overlap checks
 - support checking all three dashboard JSON files in one run
+- define one canonical default file set in Python:
+  - `metrics/grafana/ticdc_new_arch.json`
+  - `metrics/nextgengrafana/ticdc_new_arch_next_gen.json`
+  - `metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json`
+  - and their matching `.sha256` files
+- expose a no-argument CLI that checks that canonical file set from repo root
+- optionally accept explicit file arguments, but the default path must be the
+  canonical set used by `scripts/check-ticdc-dashboard.sh`
 
 Restrict `scripts/generate-next-gen-metrics.sh` changes to:
 
@@ -214,7 +230,7 @@ Do not change its `sed`/`jq` transformation semantics.
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 python3 scripts/gen-ticdc-dashboards
 python3 scripts/check-ticdc-dashboard.py
 ```
@@ -228,7 +244,7 @@ Expected:
 - [ ] **Step 5: Commit generator/checksum implementation and generated artifacts**
 
 ```bash
-git add scripts/gen-ticdc-dashboards scripts/check-ticdc-dashboard.py scripts/generate-next-gen-metrics.sh metrics/grafana/ticdc_new_arch.json metrics/grafana/ticdc_new_arch.json.sha256 metrics/nextgengrafana/ticdc_new_arch_next_gen.json metrics/nextgengrafana/ticdc_new_arch_next_gen.json.sha256 metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json.sha256 scripts/tests/test_ticdc_dashboard_tools.py
+git add scripts/gen-ticdc-dashboards scripts/check-ticdc-dashboard.py scripts/generate-next-gen-metrics.sh metrics/grafana/ticdc_new_arch.json metrics/grafana/ticdc_new_arch.json.sha256 metrics/nextgengrafana/ticdc_new_arch_next_gen.json metrics/nextgengrafana/ticdc_new_arch_next_gen.json.sha256 metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json.sha256 scripts/tests/__init__.py scripts/tests/test_ticdc_dashboard_tools.py
 git commit -m "metrics: add TiCDC dashboard generator"
 ```
 
@@ -251,7 +267,7 @@ from a non-repo CWD using repo-root-relative checksum paths.
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
 Expected:
@@ -273,15 +289,19 @@ Implement:
 - Makefile wiring:
   - `generate-next-gen-grafana` should call `python3 scripts/gen-ticdc-dashboards`
   - `check-ticdc-dashboard` should call the shell wrapper
-  - `make check` should still regenerate artifacts and then fail on
+  - `make check` must run generation before dashboard checking so freshness is
+    established before checksum/structure validation
+  - `make check` should still fail on
     `git diff --exit-code`
+  - if needed, add a dedicated Python-script test target and invoke it from
+    `make check`
 
 - [ ] **Step 4: Run the targeted checks and Makefile entry points**
 
 Run:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ./scripts/check-ticdc-dashboard.sh
 make generate-next-gen-grafana
 ```
@@ -315,7 +335,7 @@ git commit -m "docs: wire TiCDC dashboard workflow"
 Run these commands in order:
 
 ```bash
-python3 -m unittest scripts.tests.test_ticdc_dashboard_tools -v
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 python3 scripts/gen-ticdc-dashboards
 python3 scripts/check-ticdc-dashboard.py
 ./scripts/check-ticdc-dashboard.sh
