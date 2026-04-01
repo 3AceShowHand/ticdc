@@ -14,10 +14,21 @@
 
 set -euo pipefail
 
-ORIGIN_FILE="metrics/grafana/ticdc_new_arch.json"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
 
-NEXT_GEN_SHARED_FILE="${1:-metrics/nextgengrafana/ticdc_new_arch_next_gen.json}"
-NEXT_GEN_USER_FILE="${2:-metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json}"
+resolve_repo_path() {
+	local path="$1"
+	if [[ "$path" = /* ]]; then
+		printf '%s\n' "$path"
+	else
+		printf '%s\n' "$repo_root/$path"
+	fi
+}
+
+ORIGIN_FILE="$(resolve_repo_path "metrics/grafana/ticdc_new_arch.json")"
+NEXT_GEN_SHARED_FILE="$(resolve_repo_path "${1:-metrics/nextgengrafana/ticdc_new_arch_next_gen.json}")"
+NEXT_GEN_USER_FILE="$(resolve_repo_path "${2:-metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json}")"
 
 # Determine sed command and in-place edit syntax.
 SED_CMD="${SED_CMD:-sed}"

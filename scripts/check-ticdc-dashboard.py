@@ -14,7 +14,32 @@
 
 import json
 from collections import defaultdict
+import hashlib
+from pathlib import Path
 import sys
+
+
+DEFAULT_DASHBOARD_FILES = [
+    "metrics/grafana/ticdc_new_arch.json",
+    "metrics/nextgengrafana/ticdc_new_arch_next_gen.json",
+    "metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json",
+]
+DEFAULT_CHECKSUM_FILES = [
+    "metrics/grafana/ticdc_new_arch.json.sha256",
+    "metrics/nextgengrafana/ticdc_new_arch_next_gen.json.sha256",
+    "metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json.sha256",
+]
+
+
+def discover_repo_root():
+    return Path(__file__).absolute().parents[1]
+
+
+def resolve_repo_path(repo_root, path):
+    path = Path(path)
+    if path.is_absolute():
+        return path
+    return repo_root / path
 
 
 def overlaps(left, right):
@@ -74,8 +99,7 @@ def check_container(items, parents=()):
     return messages
 
 
-def main():
-    path = sys.argv[1]
+def check_dashboard_file(path):
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -89,6 +113,78 @@ def main():
             messages.append(f"Duplicate ID {panel_id}: " + " <-> ".join(paths))
 
     messages.extend(check_container(data.get("panels", [])))
+    return messages
+
+
+def check_dashboards(repo_root, dashboard_files):
+    messages = []
+    for dashboard_file in dashboard_files:
+        path = resolve_repo_path(repo_root, dashboard_file)
+        relative = path.resolve().relative_to(repo_root.resolve()).as_posix()
+        if not path.exists():
+            messages.append("Missing dashboard file: {}".format(relative))
+            continue
+        for message in check_dashboard_file(path):
+            messages.append("{}: {}".format(relative, message))
+    return messages
+
+
+def check_checksums(repo_root, checksum_files):
+    messages = []
+    for checksum_file in checksum_files:
+        checksum_path = resolve_repo_path(repo_root, checksum_file)
+        relative_checksum = checksum_path.resolve().relative_to(repo_root.resolve()).as_posix()
+        if not checksum_path.exists():
+            messages.append("Missing checksum file: {}".format(relative_checksum))
+            continue
+
+        for line in checksum_path.read_text(encoding="utf-8").splitlines():
+            if not line:
+                continue
+            if "  " not in line:
+                messages.append("Malformed checksum entry in {}: {}".format(relative_checksum, line))
+                continue
+            expected, relative_path = line.split("  ", 1)
+            if not relative_path or relative_path.startswith("/"):
+                messages.append("Checksum path must be repo relative in {}: {}".format(relative_checksum, line))
+                continue
+
+            data_path = repo_root / relative_path
+            if not data_path.exists():
+                messages.append("Missing dashboard artifact referenced by {}: {}".format(relative_checksum, relative_path))
+                continue
+
+            actual = hashlib.sha256(data_path.read_bytes()).hexdigest()
+            if actual != expected:
+                messages.append(
+                    "Checksum mismatch for {}: expected {}, got {}".format(
+                        relative_path,
+                        expected,
+                        actual,
+                    )
+                )
+    return messages
+
+
+def main(argv=None):
+    repo_root = discover_repo_root()
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    if argv:
+        dashboard_files = []
+        checksum_files = []
+        for arg in argv:
+            if arg.endswith(".sha256"):
+                checksum_files.append(arg)
+            else:
+                dashboard_files.append(arg)
+    else:
+        dashboard_files = list(DEFAULT_DASHBOARD_FILES)
+        checksum_files = list(DEFAULT_CHECKSUM_FILES)
+
+    messages = []
+    messages.extend(check_dashboards(repo_root, dashboard_files))
+    messages.extend(check_checksums(repo_root, checksum_files))
 
     if messages:
         print("\n".join(messages))

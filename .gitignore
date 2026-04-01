@@ -18,3 +18,19 @@ cdc-junit-report.xml
 
 # temp files
 *.tmp
+
+# Python caches and local tooling artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/

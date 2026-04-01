@@ -1,0 +1,192 @@
+# Copyright 2026 PingCAP, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+
+"""Immutable spec objects for the primitive Grafana dashboard DSL.
+
+The DSL is intentionally split into two layers:
+
+1. `metrics.dsl.api` provides the author-facing constructor helpers.
+2. This module stores the normalized immutable objects that the renderer consumes.
+
+Keeping the spec layer small and explicit makes the authoring API easier to learn
+and the renderer easier to reason about.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TypeAlias
+
+
+Scalar: TypeAlias = str | int | float
+ScalarOrNone: TypeAlias = Scalar | None
+JsonObject: TypeAlias = dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class TargetSpec:
+    """One Prometheus query attached to a panel."""
+
+    expr: str
+    legend: str | None = None
+    ref: str = "A"
+    hide: bool = False
+    format: str | None = None
+    instant: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LegendSpec:
+    """Optional legend customization for panels."""
+
+    show: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class AxisSpec:
+    """Optional y-axis customization for graph-like panels."""
+
+    unit: str = "short"
+    min: ScalarOrNone = None
+    max: ScalarOrNone = None
+    decimals: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ThresholdSpec:
+    """A threshold rule for a panel."""
+
+    value: Scalar
+    color: str
+
+
+@dataclass(frozen=True, slots=True)
+class SeriesOverrideSpec:
+    """Per-series override for classic graph panels."""
+
+    alias: str
+    yaxis: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TransformationSpec:
+    """A Grafana table transformation."""
+
+    id: str
+    options: JsonObject = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class PanelSpec:
+    """Shared fields for all panel types.
+
+    `span` uses Grafana's 24-column row layout.
+    `x` is optional and only needed when a panel should start at an explicit
+    horizontal offset instead of the next auto-layout position.
+    """
+
+    title: str
+    targets: list[TargetSpec]
+    span: int = 12
+    height: int = 7
+    description: str | None = None
+    x: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GraphPanelSpec(PanelSpec):
+    """Specification for classic Grafana `graph` panels."""
+
+    unit: str = "short"
+    min: ScalarOrNone = None
+    max: ScalarOrNone = None
+    decimals: int | None = None
+    stack: bool = False
+    fill: int = 1
+    legend: LegendSpec | None = None
+    axis: AxisSpec | None = None
+    thresholds: list[ThresholdSpec] = field(default_factory=list)
+    overrides: list[SeriesOverrideSpec] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class TimeSeriesPanelSpec(PanelSpec):
+    """Specification for Grafana `timeseries` panels."""
+
+    unit: str = "short"
+    min: ScalarOrNone = None
+    max: ScalarOrNone = None
+    decimals: int | None = None
+    legend: LegendSpec | None = None
+    thresholds: list[ThresholdSpec] = field(default_factory=list)
+
+
+@dataclass(frozen=True, slots=True)
+class HeatmapPanelSpec(PanelSpec):
+    """Specification for Grafana `heatmap` panels."""
+
+    unit: str = "short"
+
+
+@dataclass(frozen=True, slots=True)
+class TablePanelSpec(PanelSpec):
+    """Specification for Grafana `table` panels."""
+
+    transformations: list[TransformationSpec] = field(default_factory=list)
+
+
+PanelSpecLike: TypeAlias = GraphPanelSpec | TimeSeriesPanelSpec | HeatmapPanelSpec | TablePanelSpec
+
+
+@dataclass(frozen=True, slots=True)
+class RowSpec:
+    """A logical dashboard row."""
+
+    title: str
+    panels: list[PanelSpecLike]
+    collapsed: bool = True
+    repeat: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class QueryVarSpec:
+    """A query-backed Grafana template variable."""
+
+    name: str
+    query: str
+    label: str | None = None
+    multi: bool = False
+    include_all: bool = False
+    all_value: str | None = None
+    hide: int = 0
+    regex: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CustomVarSpec:
+    """A fixed-option Grafana template variable."""
+
+    name: str
+    options: list[str]
+    label: str | None = None
+    include_all: bool = False
+    all_value: str | None = None
+    hide: int = 0
+
+
+VariableSpecLike: TypeAlias = QueryVarSpec | CustomVarSpec
+Annotation: TypeAlias = JsonObject
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardSpec:
+    """Top-level dashboard specification."""
+
+    title: str
+    uid: str
+    variables: list[VariableSpecLike]
+    rows: list[RowSpec]
+    annotations: list[Annotation] = field(default_factory=list)
+    refresh: str = "10s"

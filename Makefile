@@ -5,7 +5,7 @@
 	cdc kafka_consumer storage_consumer pulsar_consumer filter_helper \
 	prepare_test_binaries \
 	unit_test_in_verify_ci integration_test_build integration_test_build_fast integration_test_mysql integration_test_kafka integration_test_storage integration_test_pulsar \
-	generate-next-gen-grafana
+	generate-next-gen-grafana test-ticdc-dashboard-tools
 
 
 FAIL_ON_STDOUT := awk "{ print } END { if (NR > 0) { exit 1  }  }"
@@ -316,6 +316,10 @@ check-ticdc-dashboard:
 	@echo "check-ticdc-dashboard"
 	@./scripts/check-ticdc-dashboard.sh
 
+test-ticdc-dashboard-tools:
+	@echo "test-ticdc-dashboard-tools"
+	@python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
 check-diff-line-width:
 ifneq ($(shell echo $(RELEASE_VERSION) | grep master),)
 	@echo "check-file-width"
@@ -328,7 +332,7 @@ check-makefiles: format-makefiles
 format-makefiles: $(MAKE_FILES)
 	$(SED_IN_PLACE) -e 's/^\(\t*\)  /\1\t/g' -e 's/^\(\t*\) /\1/' -- $?
 
-check: check-copyright fmt tidy generate_mock go-generate check-diff-line-width check-ticdc-dashboard check-makefiles generate-next-gen-grafana
+check: check-copyright fmt tidy generate_mock go-generate check-diff-line-width generate-next-gen-grafana check-ticdc-dashboard test-ticdc-dashboard-tools check-makefiles
 	@git --no-pager diff --exit-code || (echo "Please add changed files!" && false)
 
 clean:
@@ -341,4 +345,4 @@ clean:
 workload: tools/bin/workload
 
 generate-next-gen-grafana:
-	./scripts/generate-next-gen-metrics.sh
+	python3 ./scripts/gen-ticdc-dashboards

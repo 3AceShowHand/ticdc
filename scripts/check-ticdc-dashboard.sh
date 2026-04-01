@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Copyright 2022 PingCAP, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,28 +14,9 @@
 
 set -euo pipefail
 
-dashboard_file="metrics/grafana/ticdc_new_arch.json"
-python_checker="scripts/check-ticdc-dashboard.py"
-has_error=0
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/.." && pwd)"
+python_checker="$repo_root/scripts/check-ticdc-dashboard.py"
 
-if command -v python3 &>/dev/null; then
-	check_output=""
-	if ! check_output=$(python3 "$python_checker" "$dashboard_file"); then
-		echo "Find dashboard issues in $dashboard_file"
-		echo "$check_output"
-		has_error=1
-	fi
-elif command -v jq &>/dev/null; then
-	# Fallback for environments without python3. This keeps the previous
-	# duplicate ID check so CI still catches obvious dashboard regressions.
-	dup=$(jq '[.panels[] | .panels[]?] | group_by(.id) | .[] | select(length > 1) | .[] | { id: .id, title: .title }' "$dashboard_file")
-	if [[ -n $dup ]]; then
-		echo "Find panels with duplicated ID in $dashboard_file"
-		echo "$dup"
-		echo "Please choose a new ID that is larger than the max ID:"
-		jq '[.panels[] | .panels[]? | .id] | max' "$dashboard_file"
-		has_error=1
-	fi
-fi
-
-exit "$has_error"
+cd "$repo_root"
+python3 "$python_checker" "$@"
