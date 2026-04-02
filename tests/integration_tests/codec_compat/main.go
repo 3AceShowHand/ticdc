@@ -32,6 +32,8 @@ const (
 type config struct {
 	mode                  string
 	protocol              string
+	encodingFormat        string
+	schemaRegistryURI     string
 	sqlRoot               string
 	fixtureRoot           string
 	upstreamDSN           string
@@ -58,6 +60,8 @@ func parseFlags() config {
 	cfg := config{}
 	flag.StringVar(&cfg.mode, "mode", modeVerify, "run mode: generate or verify")
 	flag.StringVar(&cfg.protocol, "protocol", "canal-json", "codec protocol")
+	flag.StringVar(&cfg.encodingFormat, "encoding-format", "", "encoding format for simple protocol")
+	flag.StringVar(&cfg.schemaRegistryURI, "schema-registry-uri", "", "schema registry URI for avro protocol")
 	flag.StringVar(&cfg.sqlRoot, "sql-root", "", "root directory of SQL corpus")
 	flag.StringVar(&cfg.fixtureRoot, "fixture-root", "", "root directory of fixtures")
 	flag.StringVar(&cfg.upstreamDSN, "upstream-dsn", "", "upstream TiDB DSN")
@@ -79,6 +83,10 @@ func run(ctx context.Context, cfg config) error {
 	if err := cfg.validate(); err != nil {
 		return err
 	}
+	spec, err := cfg.protocolSpec()
+	if err != nil {
+		return err
+	}
 
 	plan := DefaultPlan()
 	if err := plan.Validate(cfg.sqlRoot); err != nil {
@@ -95,17 +103,17 @@ func run(ctx context.Context, cfg config) error {
 		}
 	}()
 
-	collector, err := NewCollector(splitCSV(cfg.kafkaAddrs), cfg.topic, cfg.kafkaSessionTimeout)
+	collector, err := NewCollector(splitCSV(cfg.kafkaAddrs), cfg.topic, cfg.kafkaSessionTimeout, spec)
 	if err != nil {
 		return err
 	}
 	defer collector.Close()
 
 	changefeedClient := NewChangefeedClient(cfg.cdcAPI, cfg.changefeedID, cfg.keyspace)
-	store := NewFixtureStore(cfg.fixtureRoot, cfg.protocol)
+	store := NewFixtureStore(cfg.fixtureRoot, spec)
 
 	for _, plannedFile := range plan.OrderedFiles() {
-		if err := processFile(ctx, cfg, plannedFile, runner, collector, changefeedClient, store); err != nil {
+		if err := processFile(ctx, cfg, spec, plannedFile, runner, collector, changefeedClient, store); err != nil {
 			return err
 		}
 	}
@@ -116,6 +124,7 @@ func run(ctx context.Context, cfg config) error {
 func processFile(
 	ctx context.Context,
 	cfg config,
+	spec protocolSpec,
 	plannedFile PlannedFile,
 	runner *Runner,
 	collector *Collector,
@@ -133,9 +142,10 @@ func processFile(
 		zap.Int("statements", len(statements)))
 
 	actual := FileFixture{
-		Protocol:   cfg.protocol,
-		SourceFile: statements[0].SourceFile,
-		Statements: make([]StatementFixture, 0, len(statements)),
+		Protocol:       cfg.protocol,
+		EncodingFormat: spec.encodingFormat,
+		SourceFile:     statements[0].SourceFile,
+		Statements:     make([]StatementFixture, 0, len(statements)),
 	}
 
 	for _, stmt := range statements {
@@ -161,7 +171,7 @@ func processFile(
 			return errors.Annotatef(err, "drain messages for %s stmt#%d", stmt.SourceFile, stmt.Ordinal)
 		}
 
-		normalized, err := NormalizeCapturedMessages(messages)
+		normalized, err := NormalizeCapturedMessages(spec, messages)
 		if err != nil {
 			return errors.Annotatef(err, "normalize messages for %s stmt#%d", stmt.SourceFile, stmt.Ordinal)
 		}
@@ -202,11 +212,15 @@ func processFile(
 }
 
 func (c config) validate() error {
+	spec, err := c.protocolSpec()
+	if err != nil {
+		return err
+	}
 	if c.mode != modeGenerate && c.mode != modeVerify {
 		return errors.Errorf("unsupported mode %s", c.mode)
 	}
-	if c.protocol != "canal-json" {
-		return errors.Errorf("unsupported protocol %s", c.protocol)
+	if spec.requiresSchemaRegistry() && c.schemaRegistryURI == "" {
+		return errors.New("schema-registry-uri must be set")
 	}
 	if c.sqlRoot == "" {
 		return errors.New("sql-root must be set")
@@ -227,6 +241,10 @@ func (c config) validate() error {
 		return errors.New("changefeed-id must be set")
 	}
 	return nil
+}
+
+func (c config) protocolSpec() (protocolSpec, error) {
+	return resolveProtocolSpec(c.protocol, c.encodingFormat)
 }
 
 func splitCSV(in string) []string {

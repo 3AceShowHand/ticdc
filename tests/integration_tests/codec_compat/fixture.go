@@ -28,25 +28,26 @@ type StatementFixture struct {
 }
 
 type FileFixture struct {
-	Protocol   string             `json:"protocol"`
-	SourceFile string             `json:"source_file"`
-	Statements []StatementFixture `json:"statements"`
+	Protocol       string             `json:"protocol"`
+	EncodingFormat string             `json:"encoding_format,omitempty"`
+	SourceFile     string             `json:"source_file"`
+	Statements     []StatementFixture `json:"statements"`
 }
 
 type FixtureStore struct {
-	root     string
-	protocol string
+	root string
+	spec protocolSpec
 }
 
-func NewFixtureStore(root, protocol string) *FixtureStore {
-	return &FixtureStore{root: root, protocol: protocol}
+func NewFixtureStore(root string, spec protocolSpec) *FixtureStore {
+	return &FixtureStore{root: root, spec: spec}
 }
 
 func (s *FixtureStore) FixturePath(sourceFile string) string {
 	relative := strings.TrimPrefix(sourceFile, "sql/")
 	ext := filepath.Ext(relative)
 	base := strings.TrimSuffix(relative, ext) + ".json"
-	return filepath.Join(s.root, s.protocol, base)
+	return filepath.Join(s.root, s.spec.fixtureDir, base)
 }
 
 func (s *FixtureStore) Write(fixture FileFixture) error {

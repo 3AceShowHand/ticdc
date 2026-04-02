@@ -1,13 +1,14 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestFixtureRoundTrip(t *testing.T) {
-	store := NewFixtureStore(t.TempDir(), "canal-json")
+	store := NewFixtureStore(t.TempDir(), mustResolveProtocolSpec(t, "canal-json", ""))
 	fixture := FileFixture{
 		Protocol:   "canal-json",
 		SourceFile: "sql/dml/basic.sql",
@@ -29,4 +30,9 @@ func TestFixtureRoundTrip(t *testing.T) {
 	require.Len(t, readBack.Statements, 1)
 	require.Equal(t, "INSERT INTO codec_compat.dml_basic_table (id, c1, c2) VALUES (1, 10, 'alpha');", readBack.Statements[0].SQL)
 	require.Equal(t, store.FixturePath("sql/dml/basic.sql"), store.FixturePath(readBack.SourceFile))
+}
+
+func TestFixturePathUsesProtocolVariant(t *testing.T) {
+	store := NewFixtureStore(t.TempDir(), mustResolveProtocolSpec(t, "simple", "avro"))
+	require.Equal(t, filepath.Join(store.root, "simple-avro", "dml", "basic.json"), store.FixturePath("sql/dml/basic.sql"))
 }

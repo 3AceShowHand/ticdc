@@ -67,6 +67,11 @@ func CompareFileFixtures(expected, actual FileFixture) error {
 	if expected.Protocol != actual.Protocol {
 		return errors.Errorf("fixture protocol mismatch: expected=%s actual=%s", expected.Protocol, actual.Protocol)
 	}
+	if expected.EncodingFormat != actual.EncodingFormat {
+		return errors.Errorf(
+			"fixture encoding-format mismatch: expected=%s actual=%s",
+			expected.EncodingFormat, actual.EncodingFormat)
+	}
 	if expected.SourceFile != actual.SourceFile {
 		return errors.Errorf("fixture source file mismatch: expected=%s actual=%s", expected.SourceFile, actual.SourceFile)
 	}
@@ -93,7 +98,15 @@ func CompareFileFixtures(expected, actual FileFixture) error {
 			continue
 		}
 
-		return errors.New(formatStatementDiff(actual.SourceFile, i+1, actualStmt.SQL, len(expectedStmt.ExpectedMessages), len(actualStmt.ExpectedMessages), diff))
+		return errors.New(formatStatementDiff(
+			actual.Protocol,
+			actual.EncodingFormat,
+			actual.SourceFile,
+			i+1,
+			actualStmt.SQL,
+			len(expectedStmt.ExpectedMessages),
+			len(actualStmt.ExpectedMessages),
+			diff))
 	}
 
 	return nil
@@ -112,6 +125,8 @@ func multisetCounts(messages []NormalizedMessage) (map[string]int, error) {
 }
 
 func formatStatementDiff(
+	protocol string,
+	encodingFormat string,
 	sourceFile string,
 	ordinal int,
 	sql string,
@@ -120,7 +135,11 @@ func formatStatementDiff(
 	diff CompareDiff,
 ) string {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("protocol=canal-json\nsource_file=%s\nstatement=%d\nsql=%s\nexpected_count=%d\nactual_count=%d\n", sourceFile, ordinal, sql, expectedCount, actualCount))
+	builder.WriteString(fmt.Sprintf("protocol=%s\n", protocol))
+	if encodingFormat != "" {
+		builder.WriteString(fmt.Sprintf("encoding_format=%s\n", encodingFormat))
+	}
+	builder.WriteString(fmt.Sprintf("source_file=%s\nstatement=%d\nsql=%s\nexpected_count=%d\nactual_count=%d\n", sourceFile, ordinal, sql, expectedCount, actualCount))
 	if len(diff.Missing) > 0 {
 		builder.WriteString("\nmissing_messages:\n")
 		for _, message := range diff.Missing {
