@@ -1,0 +1,10 @@
+CREATE TABLE codec_compat.partition_table (
+  id INT NOT NULL,
+  year_col INT NOT NULL,
+  PRIMARY KEY (id, year_col)
+)
+PARTITION BY RANGE (year_col) (
+  PARTITION p0 VALUES LESS THAN (1991),
+  PARTITION p1 VALUES LESS THAN (1995),
+  PARTITION p2 VALUES LESS THAN (1999)
+);

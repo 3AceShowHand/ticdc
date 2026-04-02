@@ -1,0 +1,2 @@
+# Shared changefeed config placeholder for codec compatibility tests.
+# The first implementation keeps protocol selection in the sink URI.

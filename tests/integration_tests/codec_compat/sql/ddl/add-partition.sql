@@ -1,0 +1,2 @@
+ALTER TABLE codec_compat.partition_table
+ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));

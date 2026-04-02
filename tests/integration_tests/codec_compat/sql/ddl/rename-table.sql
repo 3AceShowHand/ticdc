@@ -1,0 +1,1 @@
+RENAME TABLE codec_compat.rename_single_src TO codec_compat.rename_single_dst;

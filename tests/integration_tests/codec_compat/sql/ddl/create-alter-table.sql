@@ -1,0 +1,4 @@
+CREATE TABLE codec_compat.alter_table (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  c1 INT
+) AUTO_INCREMENT = 1;
