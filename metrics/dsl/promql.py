@@ -11,9 +11,9 @@ primitive `query()` / `graph()` APIs directly when that is clearer.
 
 from __future__ import annotations
 
+import textwrap
 from collections.abc import Sequence
 from dataclasses import dataclass
-import textwrap
 
 from .api import query
 from .specs import TargetSpec
@@ -139,7 +139,13 @@ def histogram_quantile_rate(
 
     bucket_metric = metric if metric.endswith("_bucket") else f"{metric}_bucket"
     bucket_by = ("le", *by)
-    return f"histogram_quantile({quantile}, {sum_rate(bucket_metric, matchers=matchers, by=bucket_by, window=window)})"
+    bucket_rate = sum_rate(
+        bucket_metric,
+        matchers=matchers,
+        by=bucket_by,
+        window=window,
+    )
+    return f"histogram_quantile({quantile}, {bucket_rate})"
 
 
 def histogram_average_rate(

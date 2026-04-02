@@ -15,8 +15,12 @@ from .api import (
     row,
     table,
     target,
-    timeseries,
     transformation,
+)
+from .presets import (
+    histogram_heatmap_panel,
+    histogram_panel_pair,
+    histogram_quantile_graph,
 )
 from .promql import (
     LabelMatcher,
@@ -41,15 +45,11 @@ from .promql import (
     sum_by,
     sum_rate,
 )
-from .presets import histogram_heatmap_panel, histogram_panel_pair, histogram_quantile_graph
 from .render import render_dashboard
-from .ticdc import changefeed_graph, changefeed_scope, instance_graph, instance_scope, metric_graph
 
 __all__ = [
     "LabelMatcher",
     "avg_by",
-    "changefeed_graph",
-    "changefeed_scope",
     "custom_var",
     "dashboard",
     "delta",
@@ -64,11 +64,8 @@ __all__ = [
     "histogram_quantile_graph",
     "increase",
     "instant_query",
-    "instance_graph",
-    "instance_scope",
     "legend_for",
     "max_by",
-    "metric_graph",
     "min_by",
     "neq",
     "not_regex",
@@ -85,6 +82,5 @@ __all__ = [
     "sum_rate",
     "table",
     "target",
-    "timeseries",
     "transformation",
 ]

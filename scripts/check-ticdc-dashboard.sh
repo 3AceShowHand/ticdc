@@ -19,4 +19,4 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 python_checker="$repo_root/scripts/check-ticdc-dashboard.py"
 
 cd "$repo_root"
-python3 "$python_checker" "$@"
+uv run python "$python_checker" "$@"

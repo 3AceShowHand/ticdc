@@ -27,8 +27,8 @@ resolve_repo_path() {
 }
 
 ORIGIN_FILE="$(resolve_repo_path "metrics/grafana/ticdc_new_arch.json")"
-NEXT_GEN_SHARED_FILE="$(resolve_repo_path "${1:-metrics/nextgengrafana/ticdc_new_arch_next_gen.json}")"
-NEXT_GEN_USER_FILE="$(resolve_repo_path "${2:-metrics/nextgengrafana/ticdc_new_arch_with_keyspace_name.json}")"
+NEXT_GEN_SHARED_FILE="$(resolve_repo_path "${1:-metrics/grafana/ticdc_new_arch_next_gen.json}")"
+NEXT_GEN_USER_FILE="$(resolve_repo_path "${2:-metrics/grafana/ticdc_new_arch_with_keyspace_name.json}")"
 
 # Determine sed command and in-place edit syntax.
 SED_CMD="${SED_CMD:-sed}"

@@ -5,7 +5,8 @@
 	cdc kafka_consumer storage_consumer pulsar_consumer filter_helper \
 	prepare_test_binaries \
 	unit_test_in_verify_ci integration_test_build integration_test_build_fast integration_test_mysql integration_test_kafka integration_test_storage integration_test_pulsar \
-	generate-next-gen-grafana test-ticdc-dashboard-tools
+	generate-next-gen-grafana test-ticdc-dashboard-tools \
+	metrics-python-sync metrics-python-typecheck metrics-python-generate metrics-python-check metrics-python-test
 
 
 FAIL_ON_STDOUT := awk "{ print } END { if (NR > 0) { exit 1  }  }"
@@ -312,13 +313,34 @@ check-copyright:
 check-static: tools/bin/golangci-lint
 	tools/bin/golangci-lint run --timeout 10m0s --exclude-dirs "^tests/"
 
-check-ticdc-dashboard:
-	@echo "check-ticdc-dashboard"
+metrics-python-sync:
+	@echo "metrics-python-sync"
+	@uv sync --group dev
+
+metrics-python-typecheck:
+	@echo "metrics-python-typecheck"
+	@uv run ty check
+
+metrics-python-check:
+	@echo "metrics-python-check"
+	@uv run ty check
+	@uv run ruff format --check metrics scripts
+	@uv run ruff check metrics scripts
 	@./scripts/check-ticdc-dashboard.sh
 
-test-ticdc-dashboard-tools:
-	@echo "test-ticdc-dashboard-tools"
-	@python3 -m unittest discover -s scripts -p 'test_*.py' -v
+check-ticdc-dashboard: metrics-python-check
+
+metrics-python-test:
+	@echo "metrics-python-test"
+	@uv run python -m unittest discover -s scripts -p 'test_*.py' -v
+
+test-ticdc-dashboard-tools: metrics-python-test
+
+metrics-python-generate:
+	@echo "metrics-python-generate"
+	@uv run python ./scripts/gen-ticdc-dashboards
+
+generate-next-gen-grafana: metrics-python-generate
 
 check-diff-line-width:
 ifneq ($(shell echo $(RELEASE_VERSION) | grep master),)
@@ -343,6 +365,3 @@ clean:
 	rm -rf tools/include
 
 workload: tools/bin/workload
-
-generate-next-gen-grafana:
-	python3 ./scripts/gen-ticdc-dashboards

@@ -13,6 +13,9 @@ tools/workload/bin
 
 # Unit test reports
 cdc-junit-report.xml
+cdc-coverage.xml
+*.coverprofile
+coverage.out
 
 /tests/integration_tests/*/test_out_data
 

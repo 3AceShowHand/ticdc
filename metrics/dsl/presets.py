@@ -102,7 +102,7 @@ def histogram_quantile_graph(
                 legend=average_legend or legend_for(*by, prefix=average_prefix),
                 ref="B",
                 format=format,
-            )
+            ),
         ],
         unit=unit,
         width=width,

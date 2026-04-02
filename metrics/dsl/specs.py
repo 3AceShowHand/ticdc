@@ -17,12 +17,10 @@ and the renderer easier to reason about.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypeAlias
 
-
-Scalar: TypeAlias = str | int | float
-ScalarOrNone: TypeAlias = Scalar | None
-JsonObject: TypeAlias = dict[str, object]
+type Scalar = str | int | float
+type ScalarOrNone = Scalar | None
+type JsonObject = dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +91,7 @@ class PanelSpec:
     height: int = 7
     description: str | None = None
     x: int | None = None
+    key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,18 +111,6 @@ class GraphPanelSpec(PanelSpec):
 
 
 @dataclass(frozen=True, slots=True)
-class TimeSeriesPanelSpec(PanelSpec):
-    """Specification for Grafana `timeseries` panels."""
-
-    unit: str = "short"
-    min: ScalarOrNone = None
-    max: ScalarOrNone = None
-    decimals: int | None = None
-    legend: LegendSpec | None = None
-    thresholds: list[ThresholdSpec] = field(default_factory=list)
-
-
-@dataclass(frozen=True, slots=True)
 class HeatmapPanelSpec(PanelSpec):
     """Specification for Grafana `heatmap` panels."""
 
@@ -137,7 +124,7 @@ class TablePanelSpec(PanelSpec):
     transformations: list[TransformationSpec] = field(default_factory=list)
 
 
-PanelSpecLike: TypeAlias = GraphPanelSpec | TimeSeriesPanelSpec | HeatmapPanelSpec | TablePanelSpec
+type PanelSpecLike = GraphPanelSpec | HeatmapPanelSpec | TablePanelSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +149,7 @@ class QueryVarSpec:
     all_value: str | None = None
     hide: int = 0
     regex: str = ""
+    sort: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,8 +164,8 @@ class CustomVarSpec:
     hide: int = 0
 
 
-VariableSpecLike: TypeAlias = QueryVarSpec | CustomVarSpec
-Annotation: TypeAlias = JsonObject
+type VariableSpecLike = QueryVarSpec | CustomVarSpec
+type Annotation = JsonObject
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,5 +176,6 @@ class DashboardSpec:
     uid: str
     variables: list[VariableSpecLike]
     rows: list[RowSpec]
+    version: int = 1
     annotations: list[Annotation] = field(default_factory=list)
     refresh: str = "10s"

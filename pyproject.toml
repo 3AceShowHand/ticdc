@@ -1,6 +1,23 @@
+[project]
+name = "ticdc-metrics-dashboard-tools"
+version = "0.1.0"
+description = "TiCDC metrics dashboard generation and validation tooling."
+readme = "metrics/grafana/README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11,<0.12",
+    "ty>=0.0.27,<0.1",
+]
+
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py312"
+src = ["metrics", "scripts"]
+extend-include = ["scripts/gen-ticdc-dashboards"]
+extend-exclude = ["tests/integration_tests"]
 
 [tool.ruff.lint]
 select = [
@@ -11,3 +28,17 @@ select = [
     "SIM",
     "UP",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"metrics/rows/*.py" = ["E501"]
+
+[tool.ty.environment]
+root = ["."]
+python-version = "3.12"
+
+[tool.ty.src]
+include = ["metrics", "scripts"]
+exclude = ["tests/integration_tests", ".venv", "**/__pycache__"]
+
+[tool.ty.terminal]
+error-on-warning = true

@@ -33,11 +33,9 @@ from .specs import (
     TablePanelSpec,
     TargetSpec,
     ThresholdSpec,
-    TimeSeriesPanelSpec,
     TransformationSpec,
     VariableSpecLike,
 )
-
 
 DEFAULT_PANEL_WIDTH = 12
 ItemT = TypeVar("ItemT")
@@ -65,6 +63,7 @@ def dashboard(
     uid: str,
     variables: Sequence[VariableSpecLike],
     rows: Sequence[RowSpec],
+    version: int = 1,
     annotations: Sequence[Annotation] | None = None,
     refresh: str = "10s",
 ) -> DashboardSpec:
@@ -75,6 +74,7 @@ def dashboard(
         uid=uid,
         variables=list(variables),
         rows=list(rows),
+        version=version,
         annotations=_copy_items(annotations),
         refresh=refresh,
     )
@@ -95,6 +95,7 @@ def graph(
     title: str,
     *,
     targets: Sequence[TargetSpec],
+    key: str | None = None,
     unit: str = "short",
     span: int | None = None,
     width: int | None = None,
@@ -119,6 +120,7 @@ def graph(
 
     return GraphPanelSpec(
         title=title,
+        key=title if key is None else key,
         targets=list(targets),
         span=_resolve_span(span=span, width=width),
         height=height,
@@ -137,44 +139,11 @@ def graph(
     )
 
 
-def timeseries(
-    title: str,
-    *,
-    targets: Sequence[TargetSpec],
-    unit: str = "short",
-    span: int | None = None,
-    width: int | None = None,
-    height: int = 7,
-    x: int | None = None,
-    description: str | None = None,
-    min: ScalarOrNone = None,
-    max: ScalarOrNone = None,
-    decimals: int | None = None,
-    legend: LegendSpec | None = None,
-    thresholds: Sequence[ThresholdSpec] | None = None,
-) -> TimeSeriesPanelSpec:
-    """Build a Grafana time series panel."""
-
-    return TimeSeriesPanelSpec(
-        title=title,
-        targets=list(targets),
-        span=_resolve_span(span=span, width=width),
-        height=height,
-        x=x,
-        description=description,
-        unit=unit,
-        min=min,
-        max=max,
-        decimals=decimals,
-        legend=legend,
-        thresholds=_copy_items(thresholds),
-    )
-
-
 def heatmap(
     title: str,
     *,
     targets: Sequence[TargetSpec],
+    key: str | None = None,
     unit: str = "short",
     span: int | None = None,
     width: int | None = None,
@@ -186,6 +155,7 @@ def heatmap(
 
     return HeatmapPanelSpec(
         title=title,
+        key=title if key is None else key,
         targets=list(targets),
         span=_resolve_span(span=span, width=width),
         height=height,
@@ -199,6 +169,7 @@ def table(
     title: str,
     *,
     targets: Sequence[TargetSpec],
+    key: str | None = None,
     span: int | None = None,
     width: int | None = None,
     height: int = 7,
@@ -210,6 +181,7 @@ def table(
 
     return TablePanelSpec(
         title=title,
+        key=title if key is None else key,
         targets=list(targets),
         span=_resolve_span(span=span, width=width),
         height=height,
@@ -229,6 +201,7 @@ def query_var(
     all_value: str | None = None,
     hide: int = 0,
     regex: str = "",
+    sort: int = 0,
 ) -> QueryVarSpec:
     """Build a query-backed template variable."""
 
@@ -241,6 +214,7 @@ def query_var(
         all_value=all_value,
         hide=hide,
         regex=regex,
+        sort=sort,
     )
 
 
@@ -307,7 +281,10 @@ def query(
     )
 
 
-def transformation(kind: str, options: Mapping[str, object] | None = None) -> TransformationSpec:
+def transformation(
+    kind: str,
+    options: Mapping[str, object] | None = None,
+) -> TransformationSpec:
     """Build a Grafana table transformation."""
 
     return TransformationSpec(
