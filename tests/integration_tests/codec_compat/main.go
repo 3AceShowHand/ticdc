@@ -46,7 +46,6 @@ type config struct {
 	checkpointTimeout     time.Duration
 	checkpointPoll        time.Duration
 	collectIdleTimeout    time.Duration
-	kafkaSessionTimeout   time.Duration
 }
 
 func main() {
@@ -74,7 +73,6 @@ func parseFlags() config {
 	flag.DurationVar(&cfg.checkpointTimeout, "checkpoint-timeout", 2*time.Minute, "timeout waiting for checkpoint to advance")
 	flag.DurationVar(&cfg.checkpointPoll, "checkpoint-poll-interval", time.Second, "checkpoint polling interval")
 	flag.DurationVar(&cfg.collectIdleTimeout, "collect-idle-timeout", 2*time.Second, "idle time before draining a statement")
-	flag.DurationVar(&cfg.kafkaSessionTimeout, "kafka-session-timeout", 10*time.Second, "kafka client request timeout")
 	flag.Parse()
 	return cfg
 }
@@ -103,7 +101,7 @@ func run(ctx context.Context, cfg config) error {
 		}
 	}()
 
-	collector, err := NewCollector(splitCSV(cfg.kafkaAddrs), cfg.topic, cfg.kafkaSessionTimeout, spec)
+	collector, err := NewCollector(splitCSV(cfg.kafkaAddrs), cfg.topic, spec)
 	if err != nil {
 		return err
 	}

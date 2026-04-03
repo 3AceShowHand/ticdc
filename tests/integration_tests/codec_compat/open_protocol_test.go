@@ -10,15 +10,28 @@ import (
 func buildOpenProtocolMessage(t *testing.T, entries []openProtocolMessageEntry) ([]byte, []byte) {
 	t.Helper()
 
+	return mustOpenProtocolKey(t, entries), mustOpenProtocolValue(t, entries)
+}
+
+func mustOpenProtocolKey(t *testing.T, entries []openProtocolMessageEntry) []byte {
+	t.Helper()
+
 	key := make([]byte, 8)
 	binary.BigEndian.PutUint64(key, openProtocolBatchVersion1)
+	for _, entry := range entries {
+		key = appendLengthPrefixed(key, entry.Key)
+	}
+	return key
+}
+
+func mustOpenProtocolValue(t *testing.T, entries []openProtocolMessageEntry) []byte {
+	t.Helper()
 
 	var value []byte
 	for _, entry := range entries {
-		key = appendLengthPrefixed(key, entry.Key)
 		value = appendLengthPrefixed(value, entry.Value)
 	}
-	return key, value
+	return value
 }
 
 func appendLengthPrefixed(dst, payload []byte) []byte {

@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 
 	"github.com/pingcap/errors"
-	commonEvent "github.com/pingcap/ticdc/pkg/common/event"
+	"github.com/pingcap/ticdc/pkg/common/event"
 )
 
 type StepKind string
@@ -34,11 +34,10 @@ type PlannedFile struct {
 }
 
 type Statement struct {
-	Kind         StepKind
-	RelativePath string
-	SourceFile   string
-	Ordinal      int
-	SQL          string
+	Kind       StepKind
+	SourceFile string
+	Ordinal    int
+	SQL        string
 }
 
 type Plan struct {
@@ -142,7 +141,7 @@ func LoadStatements(sqlRoot string, file PlannedFile) ([]Statement, error) {
 		return nil, errors.Annotatef(err, "read sql file %s", path)
 	}
 
-	queries, err := commonEvent.SplitQueries(string(data))
+	queries, err := event.SplitQueries(string(data))
 	if err != nil {
 		return nil, errors.Annotatef(err, "split sql file %s", path)
 	}
@@ -154,11 +153,10 @@ func LoadStatements(sqlRoot string, file PlannedFile) ([]Statement, error) {
 	statements := make([]Statement, 0, len(queries))
 	for i, query := range queries {
 		statements = append(statements, Statement{
-			Kind:         file.Kind,
-			RelativePath: file.RelativePath,
-			SourceFile:   filepath.ToSlash(filepath.Join("sql", file.RelativePath)),
-			Ordinal:      i + 1,
-			SQL:          query,
+			Kind:       file.Kind,
+			SourceFile: filepath.ToSlash(filepath.Join("sql", file.RelativePath)),
+			Ordinal:    i + 1,
+			SQL:        query,
 		})
 	}
 

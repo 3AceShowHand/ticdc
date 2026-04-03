@@ -21,38 +21,34 @@ func TestResolveProtocolSpec(t *testing.T) {
 		protocol       string
 		encodingFormat string
 		fixtureDir     string
-		normalization  normalizationMode
+		rawEncoding    bool
 	}{
 		{
-			protocol:      "canal-json",
-			fixtureDir:    "canal-json",
-			normalization: normalizationModeJSONKeyValue,
+			protocol:   "canal-json",
+			fixtureDir: "canal-json",
 		},
 		{
-			protocol:      "open-protocol",
-			fixtureDir:    "open-protocol",
-			normalization: normalizationModeOpenProtocol,
+			protocol:   "open-protocol",
+			fixtureDir: "open-protocol",
 		},
 		{
-			protocol:      "debezium",
-			fixtureDir:    "debezium",
-			normalization: normalizationModeJSONKeyValue,
+			protocol:   "debezium",
+			fixtureDir: "debezium",
 		},
 		{
-			protocol:      "simple",
-			fixtureDir:    "simple",
-			normalization: normalizationModeJSONKeyValue,
+			protocol:   "simple",
+			fixtureDir: "simple",
 		},
 		{
 			protocol:       "simple",
 			encodingFormat: "avro",
 			fixtureDir:     "simple-avro",
-			normalization:  normalizationModeRawKeyValue,
+			rawEncoding:    true,
 		},
 		{
-			protocol:      "avro",
-			fixtureDir:    "avro",
-			normalization: normalizationModeRawKeyValue,
+			protocol:    "avro",
+			fixtureDir:  "avro",
+			rawEncoding: true,
 		},
 	}
 
@@ -65,7 +61,7 @@ func TestResolveProtocolSpec(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.protocol, spec.protocol)
 			require.Equal(t, tc.fixtureDir, spec.fixtureDir)
-			require.Equal(t, tc.normalization, spec.normalization)
+			require.Equal(t, tc.rawEncoding, spec.usesRawEncoding())
 		})
 	}
 }

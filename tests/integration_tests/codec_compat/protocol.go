@@ -26,19 +26,10 @@ const (
 	fixtureDirSimpleRaw = "simple-avro"
 )
 
-type normalizationMode string
-
-const (
-	normalizationModeJSONKeyValue normalizationMode = "json-key-value"
-	normalizationModeOpenProtocol normalizationMode = "open-protocol"
-	normalizationModeRawKeyValue  normalizationMode = "raw-key-value"
-)
-
 type protocolSpec struct {
 	protocol       string
 	encodingFormat string
 	fixtureDir     string
-	normalization  normalizationMode
 }
 
 func resolveProtocolSpec(protocol, encodingFormat string) (protocolSpec, error) {
@@ -48,27 +39,24 @@ func resolveProtocolSpec(protocol, encodingFormat string) (protocolSpec, error) 
 			return protocolSpec{}, errors.Errorf("encoding-format is only supported by protocol %s", protocolSimple)
 		}
 		return protocolSpec{
-			protocol:      protocol,
-			fixtureDir:    protocol,
-			normalization: normalizationModeJSONKeyValue,
+			protocol:   protocol,
+			fixtureDir: protocol,
 		}, nil
 	case protocolOpen:
 		if encodingFormat != "" {
 			return protocolSpec{}, errors.Errorf("encoding-format is only supported by protocol %s", protocolSimple)
 		}
 		return protocolSpec{
-			protocol:      protocol,
-			fixtureDir:    protocol,
-			normalization: normalizationModeOpenProtocol,
+			protocol:   protocol,
+			fixtureDir: protocol,
 		}, nil
 	case protocolDebezium:
 		if encodingFormat != "" {
 			return protocolSpec{}, errors.Errorf("encoding-format is only supported by protocol %s", protocolSimple)
 		}
 		return protocolSpec{
-			protocol:      protocol,
-			fixtureDir:    protocol,
-			normalization: normalizationModeJSONKeyValue,
+			protocol:   protocol,
+			fixtureDir: protocol,
 		}, nil
 	case protocolSimple:
 		if encodingFormat == "" {
@@ -80,14 +68,12 @@ func resolveProtocolSpec(protocol, encodingFormat string) (protocolSpec, error) 
 				protocol:       protocol,
 				encodingFormat: encodingFormat,
 				fixtureDir:     protocol,
-				normalization:  normalizationModeJSONKeyValue,
 			}, nil
 		case encodingFormatAvro:
 			return protocolSpec{
 				protocol:       protocol,
 				encodingFormat: encodingFormat,
 				fixtureDir:     fixtureDirSimpleRaw,
-				normalization:  normalizationModeRawKeyValue,
 			}, nil
 		default:
 			return protocolSpec{}, errors.Errorf("unsupported encoding-format %s for protocol %s", encodingFormat, protocol)
@@ -97,9 +83,8 @@ func resolveProtocolSpec(protocol, encodingFormat string) (protocolSpec, error) 
 			return protocolSpec{}, errors.Errorf("encoding-format is only supported by protocol %s", protocolSimple)
 		}
 		return protocolSpec{
-			protocol:      protocol,
-			fixtureDir:    protocol,
-			normalization: normalizationModeRawKeyValue,
+			protocol:   protocol,
+			fixtureDir: protocol,
 		}, nil
 	default:
 		return protocolSpec{}, errors.Errorf("unsupported protocol %s", protocol)
@@ -110,3 +95,11 @@ func (s protocolSpec) requiresSchemaRegistry() bool {
 	return s.protocol == protocolAvro
 }
 
+func (s protocolSpec) usesRawEncoding() bool {
+	return s.protocol == protocolAvro ||
+		(s.protocol == protocolSimple && s.encodingFormat == encodingFormatAvro)
+}
+
+func (s protocolSpec) usesOpenProtocol() bool {
+	return s.protocol == protocolOpen
+}

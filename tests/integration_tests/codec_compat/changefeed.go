@@ -33,8 +33,6 @@ type ChangefeedClient struct {
 }
 
 type changefeedInfo struct {
-	ID           string `json:"id"`
-	State        string `json:"state"`
 	CheckpointTs uint64 `json:"checkpoint_ts"`
 }
 

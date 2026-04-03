@@ -6,22 +6,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCompareNormalizedMessages(t *testing.T) {
-	a := NormalizedMessage{Value: map[string]any{"type": "INSERT", "id": 1}}
-	b := NormalizedMessage{Value: map[string]any{"type": "DELETE", "id": 2}}
+func TestCompareFileFixturesIgnoresMessageOrder(t *testing.T) {
+	expected := FileFixture{
+		Protocol:   protocolCanalJSON,
+		SourceFile: "sql/dml/basic.sql",
+		Statements: []StatementFixture{
+			{
+				SQL: "insert into t values (1)",
+				ExpectedMessages: []NormalizedMessage{
+					{Value: map[string]any{"type": "INSERT", "id": 1}},
+					{Value: map[string]any{"type": "DELETE", "id": 2}},
+				},
+			},
+		},
+	}
+	actual := FileFixture{
+		Protocol:   protocolCanalJSON,
+		SourceFile: "sql/dml/basic.sql",
+		Statements: []StatementFixture{
+			{
+				SQL: "insert into t values (1)",
+				ExpectedMessages: []NormalizedMessage{
+					{Value: map[string]any{"type": "DELETE", "id": 2}},
+					{Value: map[string]any{"type": "INSERT", "id": 1}},
+				},
+			},
+		},
+	}
 
-	diff, err := CompareNormalizedMessages(
-		[]NormalizedMessage{a, b},
-		[]NormalizedMessage{b, a},
-	)
-	require.NoError(t, err)
-	require.True(t, diff.Equal())
+	require.NoError(t, CompareFileFixtures(expected, actual))
+}
 
-	diff, err = CompareNormalizedMessages(
-		[]NormalizedMessage{a},
-		[]NormalizedMessage{a, b},
-	)
-	require.NoError(t, err)
-	require.False(t, diff.Equal())
-	require.Len(t, diff.Unexpected, 1)
+func TestCompareFileFixturesReturnsReadableDiff(t *testing.T) {
+	expected := FileFixture{
+		Protocol:       protocolSimple,
+		EncodingFormat: encodingFormatAvro,
+		SourceFile:     "sql/dml/basic.sql",
+		Statements: []StatementFixture{
+			{
+				SQL: "delete from t where id = 1",
+				ExpectedMessages: []NormalizedMessage{
+					{Value: "AQID"},
+				},
+			},
+		},
+	}
+	actual := FileFixture{
+		Protocol:       protocolSimple,
+		EncodingFormat: encodingFormatAvro,
+		SourceFile:     "sql/dml/basic.sql",
+		Statements: []StatementFixture{
+			{
+				SQL: "delete from t where id = 1",
+				ExpectedMessages: []NormalizedMessage{
+					{Value: "BAUG"},
+				},
+			},
+		},
+	}
+
+	err := CompareFileFixtures(expected, actual)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "protocol=simple")
+	require.Contains(t, err.Error(), "encoding_format=avro")
+	require.Contains(t, err.Error(), "unexpected_messages")
 }

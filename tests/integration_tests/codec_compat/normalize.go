@@ -39,8 +39,19 @@ func NormalizeCapturedMessages(spec protocolSpec, messages []CapturedMessage) ([
 }
 
 func NormalizeCapturedMessage(spec protocolSpec, message CapturedMessage) (NormalizedMessage, error) {
-	switch spec.normalization {
-	case normalizationModeJSONKeyValue:
+	switch {
+	case spec.usesOpenProtocol():
+		normalized, err := normalizeOpenProtocolMessage(message)
+		if err != nil {
+			return NormalizedMessage{}, err
+		}
+		return NormalizedMessage{Value: normalized}, nil
+	case spec.usesRawEncoding():
+		return NormalizedMessage{
+			Key:   normalizeRawBytes(message.Key),
+			Value: normalizeRawBytes(message.Value),
+		}, nil
+	default:
 		key, err := NormalizeJSONBytes(message.Key)
 		if err != nil {
 			return NormalizedMessage{}, errors.Annotate(err, "normalize key")
@@ -50,28 +61,11 @@ func NormalizeCapturedMessage(spec protocolSpec, message CapturedMessage) (Norma
 			return NormalizedMessage{}, errors.Annotate(err, "normalize value")
 		}
 		return NormalizedMessage{Key: key, Value: value}, nil
-	case normalizationModeOpenProtocol:
-		normalized, err := normalizeOpenProtocolMessage(message)
-		if err != nil {
-			return NormalizedMessage{}, err
-		}
-		return NormalizedMessage{Value: normalized}, nil
-	case normalizationModeRawKeyValue:
-		return NormalizedMessage{
-			Key:   normalizeRawBytes(message.Key),
-			Value: normalizeRawBytes(message.Value),
-		}, nil
-	default:
-		return NormalizedMessage{}, errors.Errorf("unsupported normalization mode %s", spec.normalization)
 	}
 }
 
 func NormalizeJSONBytes(raw []byte) (any, error) {
-	value, err := decodeJSONBytes(raw)
-	if err != nil {
-		return nil, err
-	}
-	return normalizeJSONValue(value), nil
+	return decodeJSONBytes(raw)
 }
 
 func decodeJSONBytes(raw []byte) (any, error) {
@@ -101,25 +95,6 @@ func decodeJSONObject(raw []byte) (map[string]any, error) {
 		return nil, errors.New("json payload is not an object")
 	}
 	return object, nil
-}
-
-func normalizeJSONValue(value any) any {
-	switch typed := value.(type) {
-	case []any:
-		result := make([]any, 0, len(typed))
-		for _, item := range typed {
-			result = append(result, normalizeJSONValue(item))
-		}
-		return result
-	case map[string]any:
-		result := make(map[string]any, len(typed))
-		for key, item := range typed {
-			result[key] = normalizeJSONValue(item)
-		}
-		return result
-	default:
-		return typed
-	}
 }
 
 func normalizeOpenProtocolMessage(message CapturedMessage) (openProtocolNormalizedMessage, error) {
