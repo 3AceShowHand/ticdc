@@ -9,7 +9,7 @@ import (
 func TestCompareFileFixturesIgnoresMessageOrder(t *testing.T) {
 	expected := FileFixture{
 		Protocol:   protocolCanalJSON,
-		SourceFile: "sql/dml/basic.sql",
+		SourceFile: "sql/dml/numeric.sql",
 		Statements: []StatementFixture{
 			{
 				SQL: "insert into t values (1)",
@@ -22,7 +22,7 @@ func TestCompareFileFixturesIgnoresMessageOrder(t *testing.T) {
 	}
 	actual := FileFixture{
 		Protocol:   protocolCanalJSON,
-		SourceFile: "sql/dml/basic.sql",
+		SourceFile: "sql/dml/numeric.sql",
 		Statements: []StatementFixture{
 			{
 				SQL: "insert into t values (1)",
@@ -41,7 +41,7 @@ func TestCompareFileFixturesReturnsReadableDiff(t *testing.T) {
 	expected := FileFixture{
 		Protocol:       protocolSimple,
 		EncodingFormat: encodingFormatAvro,
-		SourceFile:     "sql/dml/basic.sql",
+		SourceFile:     "sql/dml/numeric.sql",
 		Statements: []StatementFixture{
 			{
 				SQL: "delete from t where id = 1",
@@ -54,7 +54,7 @@ func TestCompareFileFixturesReturnsReadableDiff(t *testing.T) {
 	actual := FileFixture{
 		Protocol:       protocolSimple,
 		EncodingFormat: encodingFormatAvro,
-		SourceFile:     "sql/dml/basic.sql",
+		SourceFile:     "sql/dml/numeric.sql",
 		Statements: []StatementFixture{
 			{
 				SQL: "delete from t where id = 1",

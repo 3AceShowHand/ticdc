@@ -1,0 +1,97 @@
+-- string, blob, charset, and special character coverage
+INSERT INTO codec_compat.dml_lob_table (
+  id,
+  c_char_5,
+  c_varchar_32,
+  c_varchar_255,
+  c_binary_4,
+  c_varbinary_16,
+  c_tinytext,
+  c_text,
+  c_mediumtext,
+  c_longtext,
+  c_tinyblob,
+  c_blob,
+  c_mediumblob,
+  c_longblob,
+  c_utf8mb4,
+  c_gbk,
+  c_gbk_text
+) VALUES (
+  1,
+  'xy',
+  'plain-ascii',
+  CONCAT('line1', CHAR(10), 'line2', CHAR(9), 'quote', CHAR(34), 'slash', CHAR(92)),
+  x'00010203',
+  x'0A0B0C0D',
+  'tinytext',
+  'text-value',
+  CONCAT('medium', CHAR(10), 'text'),
+  CONCAT('long', CHAR(10), 'text'),
+  x'00',
+  x'00010203',
+  x'000102030405',
+  x'0001020304050607',
+  '中文🙂',
+  '测试',
+  '你好,世界'
+);
+
+INSERT INTO codec_compat.dml_lob_table (
+  id,
+  c_char_5,
+  c_varchar_32,
+  c_varchar_255,
+  c_binary_4,
+  c_varbinary_16,
+  c_tinytext,
+  c_text,
+  c_mediumtext,
+  c_longtext,
+  c_tinyblob,
+  c_blob,
+  c_mediumblob,
+  c_longblob,
+  c_utf8mb4,
+  c_gbk,
+  c_gbk_text
+) VALUES (
+  2,
+  '',
+  '',
+  '',
+  x'',
+  x'',
+  '',
+  '',
+  '',
+  '',
+  x'',
+  x'',
+  x'',
+  x'',
+  '',
+  '空',
+  '空文本'
+);
+
+UPDATE codec_compat.dml_lob_table
+SET c_char_5 = 'z',
+    c_varchar_32 = 'comma,semi;colon',
+    c_varchar_255 = CONCAT('first', CHAR(10), 'second', CHAR(9), 'third'),
+    c_binary_4 = x'41424344',
+    c_varbinary_16 = x'313233616263',
+    c_tinytext = 'updated',
+    c_text = 'updated-text',
+    c_mediumtext = '第二次更新',
+    c_longtext = CONCAT('emoji-', '🙂'),
+    c_tinyblob = x'FF',
+    c_blob = x'FFEE',
+    c_mediumblob = x'FFEEDDCC',
+    c_longblob = x'FFEEDDCCBBAA',
+    c_utf8mb4 = '第二次🙂',
+    c_gbk = '部署',
+    c_gbk_text = '世界,你好'
+WHERE id = 1;
+
+DELETE FROM codec_compat.dml_lob_table WHERE id = 2;

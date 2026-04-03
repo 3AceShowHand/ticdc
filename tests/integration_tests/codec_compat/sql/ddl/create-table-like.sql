@@ -1,0 +1,1 @@
+CREATE TABLE codec_compat.table_like_target LIKE codec_compat.table_like_source;

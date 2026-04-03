@@ -1,1 +1,1 @@
-ALTER TABLE codec_compat.index_table ADD INDEX idx_score (score);
+CREATE INDEX idx_score ON codec_compat.index_table (score);

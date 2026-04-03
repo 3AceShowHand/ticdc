@@ -33,13 +33,19 @@ func NewRunner(dsn string, statementLimit time.Duration) (*Runner, error) {
 		return nil, errors.Trace(err)
 	}
 	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetMaxOpenConns(4)
-	db.SetMaxIdleConns(4)
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
-	return &Runner{
+	runner := &Runner{
 		db:             db,
 		statementLimit: statementLimit,
-	}, nil
+	}
+	if err := runner.initializeSession(); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return runner, nil
 }
 
 func (r *Runner) Close() error {
@@ -47,6 +53,23 @@ func (r *Runner) Close() error {
 		return nil
 	}
 	return errors.Trace(r.db.Close())
+}
+
+func (r *Runner) initializeSession() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	initStatements := []string{
+		"SET time_zone = '+00:00'",
+		"SET NAMES utf8mb4",
+	}
+	for _, stmt := range initStatements {
+		if _, err := r.db.ExecContext(ctx, stmt); err != nil {
+			return errors.Annotatef(err, "initialize runner session with %q", stmt)
+		}
+	}
+
+	return nil
 }
 
 func (r *Runner) Execute(ctx context.Context, stmt Statement) (uint64, error) {

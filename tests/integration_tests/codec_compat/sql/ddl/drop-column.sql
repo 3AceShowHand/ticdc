@@ -1,1 +1,1 @@
-ALTER TABLE codec_compat.alter_table DROP COLUMN c2;
+ALTER TABLE codec_compat.alter_table DROP COLUMN c3;

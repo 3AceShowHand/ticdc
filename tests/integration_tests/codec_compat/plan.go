@@ -49,10 +49,17 @@ type Plan struct {
 func DefaultPlan() Plan {
 	return Plan{
 		DDLBeforeDML: []string{
+			// Database and DML fixture tables.
 			"ddl/create-database.sql",
 			"ddl/alter-database-charset.sql",
-			"ddl/create-dml-base-table.sql",
-			"ddl/create-dml-types-table.sql",
+			"ddl/create-dml-numeric-table.sql",
+			"ddl/create-dml-temporal-table.sql",
+			"ddl/create-dml-lob-table.sql",
+			"ddl/create-dml-special-table.sql",
+			"ddl/create-table-like-source.sql",
+			"ddl/create-table-like.sql",
+
+			// View and partition DDL coverage.
 			"ddl/create-view-base-table.sql",
 			"ddl/create-view.sql",
 			"ddl/create-partition-table.sql",
@@ -65,14 +72,25 @@ func DefaultPlan() Plan {
 			"ddl/create-exchange-partition-table.sql",
 			"ddl/create-exchange-plain-table.sql",
 			"ddl/exchange-partition.sql",
+
+			// Column, table option, and TTL coverage.
 			"ddl/create-alter-table.sql",
 			"ddl/add-column.sql",
 			"ddl/modify-column.sql",
+			"ddl/change-column.sql",
 			"ddl/set-default.sql",
 			"ddl/drop-column.sql",
 			"ddl/modify-table-comment.sql",
 			"ddl/modify-table-charset.sql",
 			"ddl/rebase-auto-increment.sql",
+			"ddl/create-ttl-table.sql",
+			"ddl/set-ttl.sql",
+			"ddl/disable-ttl.sql",
+			"ddl/enable-ttl.sql",
+			"ddl/set-ttl-job-interval.sql",
+			"ddl/remove-ttl.sql",
+
+			// Index, primary key, and multi schema coverage.
 			"ddl/create-index-table.sql",
 			"ddl/add-index.sql",
 			"ddl/rename-index.sql",
@@ -87,6 +105,11 @@ func DefaultPlan() Plan {
 			"ddl/create-foreign-key-child.sql",
 			"ddl/add-foreign-key.sql",
 			"ddl/drop-foreign-key.sql",
+
+			// Recover, rename, and truncate coverage.
+			"ddl/create-recover-table.sql",
+			"ddl/drop-recover-table.sql",
+			"ddl/recover-table.sql",
 			"ddl/create-rename-single-source.sql",
 			"ddl/create-rename-multi-source-a.sql",
 			"ddl/create-rename-multi-source-b.sql",
@@ -95,8 +118,10 @@ func DefaultPlan() Plan {
 			"ddl/truncate-table.sql",
 		},
 		DMLFiles: []string{
-			"dml/basic.sql",
-			"dml/types.sql",
+			"dml/numeric.sql",
+			"dml/temporal.sql",
+			"dml/lob.sql",
+			"dml/special.sql",
 		},
 		DDLAfterDML: []string{
 			"ddl/drop-view.sql",

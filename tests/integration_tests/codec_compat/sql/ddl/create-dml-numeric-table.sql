@@ -1,0 +1,21 @@
+CREATE TABLE codec_compat.dml_numeric_table (
+  id INT PRIMARY KEY,
+  c_tinyint TINYINT,
+  c_smallint SMALLINT,
+  c_mediumint MEDIUMINT,
+  c_int INT,
+  c_bigint BIGINT,
+  c_unsigned_tinyint TINYINT UNSIGNED,
+  c_unsigned_smallint SMALLINT UNSIGNED,
+  c_unsigned_mediumint MEDIUMINT UNSIGNED,
+  c_unsigned_int INT UNSIGNED,
+  c_unsigned_bigint BIGINT UNSIGNED,
+  c_float FLOAT,
+  c_unsigned_float FLOAT UNSIGNED,
+  c_double DOUBLE,
+  c_unsigned_double DOUBLE UNSIGNED,
+  c_decimal_10_2 DECIMAL(10, 2),
+  c_decimal_38_10 DECIMAL(38, 10),
+  c_decimal_unsigned DECIMAL(20, 4) UNSIGNED,
+  c_bool BOOLEAN
+);

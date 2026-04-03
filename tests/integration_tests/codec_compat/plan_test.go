@@ -13,6 +13,16 @@ func TestDefaultPlanValidate(t *testing.T) {
 	require.NoError(t, plan.Validate("sql"))
 }
 
+func TestDefaultPlanHasNoDuplicateFiles(t *testing.T) {
+	plan := DefaultPlan()
+	seen := make(map[string]struct{}, len(plan.OrderedFiles()))
+	for _, file := range plan.OrderedFiles() {
+		_, ok := seen[file.RelativePath]
+		require.Falsef(t, ok, "duplicate planned file %s", file.RelativePath)
+		seen[file.RelativePath] = struct{}{}
+	}
+}
+
 func TestLoadStatements(t *testing.T) {
 	tempDir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tempDir, "dml"), 0o755))
