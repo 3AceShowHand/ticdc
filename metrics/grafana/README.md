@@ -1,20 +1,81 @@
 # TiCDC Dashboard As Code
 
-Python is the source of truth for the TiCDC Grafana dashboard. The checked-in
-JSON files remain in the repository, but they are generated artifacts rather
-than authoring inputs.
+这份文档是当前 TiCDC Grafana dashboard Python 化改造的稳定维护说明。
 
-## What To Edit
+此前为推动这次改造而产生的过程性设计稿、实现计划、兼容性跟踪文档，
+都已经收敛整理。后续如果需要了解：
 
-- Author-facing PromQL helpers: `metrics/queries.py`
-- Mutable authoring builders: `metrics/builders.py`
-- Dashboard assembly: `metrics/dashboard.py`
-- Row definitions, one file per row: `metrics/rows/*.py`
-- Templating: `metrics/templating.py`
-- Annotations: `metrics/annotations.py`
-- Dashboard metadata: `metrics/dashboard_meta.py`
+- dashboard 代码应该改哪里
+- 如何新增或修改一个 panel
+- 哪些兼容性约束不能破
+- agent 应该如何协助同步 dashboard
+- 当前还剩哪些后续工作
 
-Do not manually edit:
+其中，稳定说明以本文件为准；阶段性待办请看 `metrics/grafana/TODO.md`。
+
+## 目标
+
+TiCDC dashboard 的源码真相现在是 Python，而不是手写 Grafana JSON。
+
+这意味着：
+
+- 人工维护的输入是 `metrics/` 下的 Python 代码
+- `metrics/grafana/*.json` 和对应 `.sha256` 都是生成产物
+- dashboard 变更应该评审业务语义和 authoring 代码，而不是评审大段 JSON diff
+
+## 当前架构
+
+当前目录结构的职责边界如下：
+
+- `metrics/dashboard.py`
+  负责 dashboard 顶层装配，只管理 row 顺序和 dashboard 级别元信息
+- `metrics/rows/*.py`
+  一行一个文件，是日常编辑的主要入口
+- `metrics/builders.py`
+  author-facing builder 层，负责 `dashboard -> row -> panel -> query` 的增量式写法
+- `metrics/queries.py`
+  常用 PromQL 表达式 helper
+- `metrics/dsl/`
+  内部 spec/render 层，负责最终 Grafana JSON 渲染
+- `metrics/annotations.py`
+  annotation 定义
+- `metrics/templating.py`
+  templating 定义
+- `metrics/dashboard_meta.py`
+  dashboard 标题、UID、version 等元信息
+- `metrics/panel_ids.py`
+  稳定 panel ID 逻辑
+- `metrics/grafana/panel_ids.json`
+  checked-in panel ID registry
+
+当前 authoring 模型只有一个：
+
+- 一个 dashboard 包含多个 row
+- 一个 row 包含多个 panel
+- 一个 panel 包含多个 query
+
+不要再引入第二套业务 DSL。
+
+## 该改哪里
+
+大多数 dashboard 修改，只需要关心这几个位置：
+
+- `metrics/rows/*.py`
+- `metrics/dashboard.py`
+- `metrics/builders.py`
+- `metrics/queries.py`
+
+通常的最短路径是：
+
+1. 找到对应的 row 文件
+2. 创建或修改一个 panel 本地变量
+3. 给 panel 添加 query
+4. 把 panel 加回 row
+5. 重新生成 dashboard 产物
+
+## 不要改哪里
+
+不要手工编辑以下文件：
 
 - `metrics/grafana/ticdc_new_arch.json`
 - `metrics/grafana/ticdc_new_arch.json.sha256`
@@ -24,29 +85,33 @@ Do not manually edit:
 - `metrics/grafana/ticdc_new_arch_with_keyspace_name.json.sha256`
 - `metrics/grafana/panel_ids.json`
 
-Those files are regenerated from Python.
+这些文件都应该由 Python 代码生成或维护。
 
-`metrics/grafana/panel_ids.json` is machine-maintained. It preserves Grafana
-panel IDs across panel insertion, deletion, and reordering. Do not edit it by
-hand.
+## Python 作用域
 
-## Quick Start
+这套 Python 工作流当前只管理 metrics dashboard 相关代码：
 
-For most dashboard changes, only three places matter:
+- `metrics/` 下的源码
+- `metrics/` 下的 dashboard 生成和校验入口
+- `metrics/tests/` 下的 Python 测试
 
-- `metrics/rows/*.py`: one file per row
-- `metrics/dashboard.py`: row order
-- `metrics/builders.py`: shared authoring helpers
+它不管理仓库里其他 Python 代码，例如 `tests/integration_tests/` 下的辅助脚本。
 
-The shortest path for a newcomer is:
+## 环境与命令
 
-1. Find the target row file under `metrics/rows/`.
-2. Create or edit one panel in a local variable.
-3. Add one or more queries to that panel.
-4. Add the panel back to the row.
-5. Regenerate the dashboard JSON.
+推荐环境：
 
-Typical edit loop:
+- Python `3.12+`
+- `uv`
+- 项目 `.venv`
+
+推荐初始化：
+
+```bash
+uv sync --group dev
+```
+
+日常编辑循环：
 
 ```bash
 uv run python metrics/generate_dashboards.py
@@ -54,23 +119,19 @@ uv run python metrics/check_dashboards.py
 uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
 ```
 
-## Python Scope
+完整验证：
 
-The Python workflow documented here currently covers only the metrics dashboard
-tooling:
+```bash
+uv run python metrics/generate_dashboards.py
+uv run ty check
+uv run ruff format --check metrics
+uv run ruff check metrics
+uv run python metrics/check_dashboards.py
+uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
+make check
+```
 
-- source modules under `metrics/`
-- dashboard generation and validation entry points under `metrics/`
-- dashboard unit tests under `metrics/tests/`
-
-It does not manage other Python code in this repository, especially the
-integration-test helpers under `tests/integration_tests/`.
-
-For this metrics tooling, the supported runtime is Python 3.12 or newer. The
-repository pins `3.12` in `.python-version`, and the recommended environment
-manager is `uv`.
-
-Helpful `make` shortcuts for this workflow:
+常用 `make` 入口：
 
 - `make metrics-python-sync`
 - `make metrics-python-typecheck`
@@ -78,122 +139,18 @@ Helpful `make` shortcuts for this workflow:
 - `make metrics-python-check`
 - `make metrics-python-test`
 
-## Authoring Workflow
+## 推荐写法
 
-1. Install `uv` and create the local tool environment:
-
-```bash
-uv sync --group dev
-```
-
-2. Edit the Python source files under `metrics/`.
-3. Regenerate dashboard artifacts:
-
-```bash
-uv run python metrics/generate_dashboards.py
-```
-
-4. Validate the generated artifacts and lint the Python source:
-
-```bash
-uv run ty check
-uv run ruff format --check metrics
-uv run ruff check metrics
-uv run python metrics/check_dashboards.py
-./scripts/check-ticdc-dashboard.sh
-```
-
-5. Run the focused Python test suite:
-
-```bash
-uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
-```
-
-6. Before finishing a change, run:
-
-```bash
-make check
-```
-
-## Agent Workflow
-
-When a TiCDC Prometheus metric changes, the recommended workflow is:
-
-1. Change the business metric in the TiCDC code.
-2. Ask an agent to sync the dashboard from the current code diff.
-3. Let the agent modify Python source under `metrics/`, not generated JSON.
-4. Let the agent regenerate dashboards and run validation.
-5. Review the business meaning of the panel change, not the raw JSON.
-
-The agent should be treated as a dashboard sync operator, not as a blind
-dashboard generator.
-
-That means:
-
-- the source of truth for metric semantics is still the TiCDC business code
-- the source of truth for dashboard authoring is still the Python code under
-  `metrics/`
-- generated JSON stays as an artifact
-
-In most cases, the human should only need to tell the agent:
-
-- which subsystem or row the metric belongs to
-- whether it should become a graph, table, or heatmap
-- whether it should extend an existing panel or create a new one
-
-The human should not need to manually:
-
-- write Grafana JSON
-- assign panel IDs
-- update checksums
-- hand-author repetitive PromQL boilerplate
-
-## Agent Prompt Template
-
-Use this prompt when syncing dashboard changes after a metric diff:
-
-```text
-Please inspect the current TiCDC Prometheus metric changes in this workspace
-and sync the Grafana dashboard accordingly.
-
-Requirements:
-1. Read the current code diff first and identify added, removed, renamed, or
-   label-changed metrics.
-2. Update the Python dashboard source under metrics/, not the generated JSON.
-3. Prefer reusing an existing panel. Only create a new panel when the new
-   metric expresses a new observation that does not fit an existing panel.
-4. Keep existing panel IDs stable. Do not let panel reordering, title changes,
-   or query refactors change existing panel IDs.
-5. After editing, run:
-   - python3 metrics/generate_dashboards.py
-   - python3 metrics/check_dashboards.py
-   - ./.venv/bin/ruff format --check metrics
-   - ./.venv/bin/ruff check metrics
-   - ./.venv/bin/ty check
-   - python3 -m unittest discover -s metrics/tests -p 'test_*.py' -v
-6. In the final summary, explain which row and panel were changed, and why.
-```
-
-When the diff alone is not enough, append one short human hint, for example:
-
-```text
-This metric belongs to the Scheduler row.
-It is a histogram and should be shown as p99 plus avg.
-Do not create a new row.
-```
-
-Use one small hint only when needed. Avoid turning dashboard changes into a
-manual specification exercise.
-
-## Builder API
-
-The recommended editing surface is:
+推荐使用的 authoring surface：
 
 - `dashboard(...)`
 - `row(...)`
-- `graph(...)`, `heatmap(...)`, `table(...)`
+- `graph(...)`
+- `heatmap(...)`
+- `table(...)`
 - `dashboard.add_row(...)`
-- `row.add_panel(...)`, `row.add_panels(...)`
+- `row.add_panel(...)`
+- `row.add_panels(...)`
 - `row.add_half_panel(...)`
 - `panel.add_query(...)`
 - `panel.add_auto_query(...)`
@@ -202,59 +159,15 @@ The recommended editing surface is:
 - `graph(...).add_histogram(...)`
 - `table(...).add_label_query(...)`
 
-These methods return `self`, so chaining is supported, but the preferred style
-is still explicit sequential construction with named local variables.
+这些方法都返回 `self`，允许链式调用。但推荐风格仍然是：
 
-Use them with one mental model only:
+- 先定义 panel 变量
+- 再逐步加 query
+- 最后把 panel 加回 row
 
-- A dashboard contains rows.
-- A row contains panels.
-- A panel contains queries.
+而不是把整行压成一个又长又嵌套的表达式。
 
-The renderer in `metrics/dsl/render.py` is the only layer that should know the
-final Grafana JSON structure.
-
-Treat `metrics/dsl/` as internal implementation. Most dashboard changes should
-not need edits there.
-
-## Stable Panel IDs
-
-Existing panel IDs are preserved by stable authoring identities:
-
-- row identity: inferred from `build_xxx_row`
-- panel identity: inferred from the local variable name assigned to
-  `graph(...)`, `heatmap(...)`, or `table(...)`
-
-This means:
-
-- changing a visible row title does not need to change panel IDs
-- changing a visible panel title does not need to change panel IDs
-- inserting a new panel only allocates a new larger ID
-- deleting a panel does not renumber any remaining panel
-
-Use explicit `key=` only when you intentionally want to preserve identity across
-an authoring rename, for example when renaming a local panel variable.
-
-For new panels, choose the local variable name carefully. It should be plain
-English and stable, because it becomes the default checked-in panel identity.
-
-## Recommended Pattern
-
-When adding a panel, follow this order:
-
-1. Find or create the target row builder.
-2. Create a panel builder in a local variable.
-3. Add one or more queries to the panel.
-4. Add the panel to the row.
-5. Return the built row from the row module.
-
-For dashboard assembly:
-
-1. Create the dashboard builder.
-2. Add rows in display order.
-3. Build once at the end.
-
-## Minimal Example
+### 最小示例
 
 ```python
 from metrics.builders import graph, row
@@ -282,7 +195,7 @@ def build_sink_row():
     return row_builder.build()
 ```
 
-Dashboard assembly should stay equally direct:
+dashboard 装配也应该保持同样直接：
 
 ```python
 from metrics.builders import dashboard as dashboard_builder
@@ -300,129 +213,206 @@ def build_dashboard_spec():
     return spec.build()
 ```
 
-Useful query shortcuts:
+## Prometheus metric 形态
 
-```python
-latency = graph("Flush Duration", unit="s", min="0").add_histogram(
-    "ticdc_sink_cloud_storage_flush_duration_seconds",
-    by_labels=["namespace", "changefeed", "instance"],
-    scope="changefeed",
-)
+这里只需要处理三类 metric：
 
-errors = table("Changefeed Error Details").add_label_query(
-    'max by (namespace, changefeed, state, code, message) (...)',
-    columns=["namespace", "changefeed", "state", "code", "message"],
-)
+- Counter
+  通常用 `expr_sum_rate(...)`、`expr_increase(...)`，或者必要时手写 `rate(...)`
+- Gauge
+  通常用 `expr_sum(...)`、`expr_avg(...)`、`expr_max(...)`、`expr_simple(...)`
+- Histogram
+  通常用 `expr_histogram_quantile(...)`、`expr_histogram_avg(...)`，或者 bucket heatmap
+
+`add_histogram(...)` 只适合“标准 quantile + avg”模式。
+不要为了统一外观，把 mixed-mode histogram panel 硬塞进一个越来越复杂的 helper。
+
+## 设计原则
+
+只有一条核心规则：
+
+把机械性样板收进内部，把监控意图留在外部。
+
+好的抽象应该隐藏这些重复机械细节：
+
+- target `format` 默认值
+- instant / range query 接线
+- 默认 `refId` 分配
+- Grafana JSON 渲染细节
+
+不好的抽象会把真正重要的监控意图也藏起来，例如：
+
+- `changefeed_metric_graph(...)` 这类业务特化 wrapper
+- `changefeed.sum(...)` 这种第二层 DSL
+- 需要作者重新思考 Grafana JSON 结构的 helper
+
+结论很简单：
+
+- 减少样板是对的
+- 隐藏业务语义是错的
+
+## 目录与命名约定
+
+- 一行一个文件，放在 `metrics/rows/`
+- 每个 row 文件只导出一个 `build_xxx_row()`
+- row 顺序只在 `metrics/dashboard.py` 里定义
+- panel 要尽量用直白、稳定的本地变量名
+- query helper 尽量让读者一眼就能看出 metric 意图
+- 原始 PromQL 只作为 escape hatch
+
+## 稳定 panel ID 约束
+
+已有 panel ID 通过稳定 authoring identity 保持不变：
+
+- row identity：默认来自 `build_xxx_row`
+- panel identity：默认来自本地变量名
+
+这意味着：
+
+- 改 row 的可见标题，不必改 panel ID
+- 改 panel 的可见标题，不必改 panel ID
+- 插入新 panel，只会分配新的更大 ID
+- 删除 panel，不会让其他 panel 重新编号
+
+`metrics/grafana/panel_ids.json` 会保留这种稳定映射。
+
+### 什么时候需要显式 `key=...`
+
+只有一种典型场景：
+
+- 你需要保留老的 panel identity
+- 但又要重命名本地变量，或者存在重复标题 panel
+
+对于新 panel：
+
+- 本地变量名要起得直白、稳定
+- 不要为了省事用 `_2`、`tmp`、`panel_a` 这类没有业务含义的名字
+
+对于已有 panel：
+
+- 如果没有显式 `key=...`，不要随便重命名本地变量
+- 如果必须重命名，先补兼容 `key=`，再改变量名
+
+## 兼容性约束
+
+后续 dashboard 修改必须同时满足这些兼容性要求：
+
+### 1. 布局约束
+
+- 不要无意改变 row 顺序
+- 不要无意把 panel 移到别的 row
+- 不要无意改变既有布局
+
+### 2. Annotation 约束
+
+- 不要无意删除 annotation
+- 不要无意改变 annotation 行为
+
+### 3. Panel ID 约束
+
+- 不要因为重排、重命名、query 重写而让已有 panel ID 漂移
+
+### 4. Canonical JSON 边界
+
+- JSON 允许做格式规范化
+- 但不能借格式规范化之名偷偷改语义
+
+### 5. 语义修复约束
+
+如果某个 query 变更是在修历史 bug：
+
+- 保留这个修复
+- 在变更说明里写清楚
+- 尽量补一个定向测试
+
+## Agent 协作方式
+
+推荐把 agent 当成“dashboard 同步执行者”，而不是“盲目生成 dashboard 的工具”。
+
+当 TiCDC Prometheus metric 变化时，建议流程：
+
+1. 先改业务代码里的 metric
+2. 让 agent 读取当前 diff
+3. 让 agent 改 `metrics/` 下的 Python 源码，而不是手改 JSON
+4. 让 agent 重新生成 dashboard 并跑验证
+5. 人工评审 panel 语义是否正确
+
+人通常只需要给 agent 少量信息：
+
+- 这个 metric 属于哪个 row
+- 它应该是 graph、table 还是 heatmap
+- 它应该并入已有 panel，还是新增 panel
+
+### 推荐 prompt
+
+```text
+Please inspect the current TiCDC Prometheus metric changes in this workspace
+and sync the Grafana dashboard accordingly.
+
+Requirements:
+1. Read the current code diff first and identify added, removed, renamed, or
+   label-changed metrics.
+2. Update the Python dashboard source under metrics/, not the generated JSON.
+3. Prefer reusing an existing panel. Only create a new panel when the new
+   metric expresses a new observation that does not fit an existing panel.
+4. Keep existing panel IDs stable. Do not let panel reordering, title changes,
+   or query refactors change existing panel IDs.
+5. After editing, run:
+   - python3 metrics/generate_dashboards.py
+   - python3 metrics/check_dashboards.py
+   - ./.venv/bin/ruff format --check metrics
+   - ./.venv/bin/ruff check metrics
+   - ./.venv/bin/ty check
+   - python3 -m unittest discover -s metrics/tests -p 'test_*.py' -v
+6. In the final summary, explain which row and panel were changed, and why.
 ```
 
-`add_auto_query(...)` means: omit Grafana's target `format` field and keep the
-current dashboard-compatible behavior.
+必要时再补一个很短的人类提示，例如：
 
-`add_range_query(...)` means: force a Prometheus range query without making the
-row author write `instant=False`.
-
-`add_label_query(...)` means: build a table from labels without making the row
-author write Grafana table transformations by hand.
-
-## Prometheus Metric Shapes
-
-TiCDC dashboards only need to deal with three Prometheus metric families:
-
-- Counter: usually render with `expr_sum_rate(...)`, `expr_increase(...)`, or a
-  raw `rate(...)` expression when needed.
-- Gauge: usually render with `expr_sum(...)`, `expr_avg(...)`, `expr_max(...)`,
-  or `expr_simple(...)`.
-- Histogram: usually render with `expr_histogram_quantile(...)`,
-  `expr_histogram_avg(...)`, or a heatmap panel over the `_bucket` series.
-
-The goal is not to create a new helper for every business concept. The goal is
-to keep authoring down to:
-
-- panel title
-- metric name
-- the small amount of aggregation or selector intent that the panel actually
-  needs
-
-## Design Rule
-
-Push boilerplate inward, keep intent outward.
-
-Good abstractions remove repeated Grafana mechanics such as:
-
-- target format defaults
-- instant vs range query wiring
-- default ref assignment
-- immutable spec rendering
-
-Bad abstractions hide the monitoring intent itself, such as:
-
-- row-specific helper functions that only wrap one metric
-- opaque scope objects that invent a second DSL
-- helper layers that force authors to think about JSON structure again
-
-Avoid writing long PromQL as one unreadable line unless it is genuinely simple.
-
-## Repository Conventions
-
-- Use one Python module per row under `metrics/rows/`.
-- Keep one exported builder per file, for example `build_scheduler_row()`.
-- Keep dashboard row order in `metrics/dashboard.py`.
-- Build panels step by step with local variables. Do not compress an entire row
-  into one chained expression.
-- Prefer `expr_*` helpers from `metrics/queries.py` when they make the metric
-  intent clearer.
-- Use raw PromQL only as an escape hatch.
-- Do not add business-specific wrapper APIs such as
-  `changefeed_metric_graph(...)` or scope objects such as `changefeed.sum(...)`.
-
-## Code Organization Guidelines
-
-To keep this codebase friendly for future editors:
-
-- Keep row modules declarative. Avoid helper abstractions that hide what panel
-  is being built.
-- Keep helpers in `metrics/dsl/` generic. Keep TiCDC-specific authoring helpers
-  in flat top-level modules under `metrics/`.
-- Prefer clear names over clever names.
-- Use type hints consistently.
-- Keep functions small enough that a reader can understand one panel block at a
-  glance.
-- Keep comments rare, but use them when a layout trick or metric choice would be
-  surprising without context.
-
-## Verification Checklist
-
-For any dashboard change, use this checklist:
-
-```bash
-uv run python metrics/generate_dashboards.py
-uv run ty check
-uv run ruff format --check metrics
-uv run ruff check metrics
-uv run python metrics/check_dashboards.py
-uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
-make check
+```text
+This metric belongs to the Scheduler row.
+It is a histogram and should be shown as p99 plus avg.
+Do not create a new row.
 ```
 
-## Current Tests
+## 当前测试职责
 
-The Python tests under `metrics/tests/` protect three layers:
+`metrics/tests/` 现在主要覆盖三层：
 
-- `test_ticdc_dsl.py`: primitive DSL behavior
-- `test_ticdc_dashboard_rows.py`: semantic row-by-row comparison against the
-  checked-in base dashboard JSON
-- `test_ticdc_dashboard_tools.py`: generator, checksum, and workflow contracts
+- `test_ticdc_dsl.py`
+  primitive DSL 和 builder 核心行为
+- `test_ticdc_dashboard_rows.py`
+  row 级别语义与 reference dashboard 的归一化比对
+- `test_ticdc_dashboard_tools.py`
+  generator、checksum、dashboard 构建和关键兼容性行为
+- `test_panel_ids.py`
+  稳定 panel ID 行为
 
-If you change the DSL surface, update these tests first or at the same time.
+测试的重点应该是“防回归的真实行为”，而不是锁死 README 文案、Makefile 字符串、
+内部导入路径或纯类型注解这种低价值 contract。
 
-## Language Server
+## Language Server / 类型检查
 
-This repository keeps `ty` configuration in `pyproject.toml` for the dashboard
-tooling only:
+项目当前用 `ty` 做 Python 类型检查，配置只覆盖 dashboard tooling：
 
 - `metrics/`
 
-That gives editors a project-level Python language server and type-checking
-baseline without pulling unrelated repository Python into the same analysis
-scope. Install the editor integration on your machine, then let it use the
-project `.venv` created by `uv sync --group dev`.
+这样可以让编辑器语言服务和类型检查只关注这一小块 Python 代码，不把仓库里其他
+Python 脚本一起拉进来。
+
+## 当前待办
+
+阶段性待办、优先级和后续边界规则统一维护在：
+
+- `metrics/grafana/TODO.md`
+
+## 结论
+
+README 只负责长期稳定的维护说明。
+
+对于 dashboard 维护者来说，最重要的不是继续发明新的 helper，而是：
+
+- 保持 authoring 简单直接
+- 保持 panel 语义清晰
+- 保持兼容性约束稳定
+- 让新人在 10 分钟内知道应该改哪里、怎么验证、哪些东西不能碰
