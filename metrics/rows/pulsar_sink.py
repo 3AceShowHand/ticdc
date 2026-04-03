@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from metrics.builders import graph, row
+from metrics.builders import LineLayouts, graph, row
 from metrics.dsl.specs import RowSpec
 
 
@@ -127,7 +127,6 @@ def build_pulsar_sink_row() -> RowSpec:
 
     pulsar_client_producer_pending_messages = graph(
         "Pulsar Client Producer Pending Messages",
-        description="",
         unit="none",
         key="producer_pending_messages",
     ).add_range_query(
@@ -135,9 +134,8 @@ def build_pulsar_sink_row() -> RowSpec:
         legend="{{changefeed}}-{{instance}}",
     )
 
-    pulsar_client_producer_pending_messages_2 = graph(
+    pulsar_client_resolved_message_count = graph(
         "Pulsar Client Producer Pending Messages",
-        description="",
         unit="none",
         key="resolved_message_count",
     ).add_range_query(
@@ -175,6 +173,9 @@ def build_pulsar_sink_row() -> RowSpec:
         pulsar_client_producer_pending_messages,
     )
 
-    row_builder.add_right_half_panel(pulsar_client_producer_pending_messages_2)
+    row_builder.add_panel(
+        pulsar_client_resolved_message_count,
+        layout=LineLayouts.HALVES_RIGHT,
+    )
 
     return row_builder.build()

@@ -3,15 +3,39 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
+"""Mutable authoring builders used by row files.
+
+Use this layer when writing dashboard content:
+
+- `dashboard()` only in `metrics/dashboard.py`
+- `row()` inside one row module
+- `graph()` / `heatmap()` / `table()` to create a panel
+- `panel.add_query(...)` or a query shortcut to attach PromQL
+
+The goal is to keep row files in a readable "create panel, add queries, attach
+panel to row" style instead of hand-writing low-level spec objects.
+
+For existing panels, keep one extra rule in mind: unless a panel already has an
+explicit `key=...`, its local variable name becomes the stable panel identity
+used for checked-in Grafana panel IDs. Do not casually rename existing panel
+variables.
+"""
+
 from __future__ import annotations
 
+import ast
+import inspect
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from enum import IntEnum
+from functools import cache
+from pathlib import Path
 from typing import Generic, Literal, Self, TypeVar, cast
 
 from metrics.dsl.api import dashboard as build_dashboard_spec
+from metrics.dsl.api import graph as build_graph_panel
+from metrics.dsl.api import heatmap as build_heatmap_panel
 from metrics.dsl.api import row as build_row_spec
+from metrics.dsl.api import table as build_table_panel
 from metrics.dsl.api import transformation as build_transformation
 from metrics.dsl.render import ROW_WIDTH
 from metrics.dsl.specs import (
@@ -32,17 +56,9 @@ from metrics.queries import (
     expr_histogram_quantile,
     legend_for,
 )
-from metrics.queries import graph_panel as build_graph_panel
-from metrics.queries import heatmap_panel as build_heatmap_panel
-from metrics.queries import table_panel as build_table_panel
 from metrics.queries import target as build_target
 
-
-class RowHeights(IntEnum):
-    NORMAL = 7
-
-
-DEFAULT_PANEL_HEIGHT = RowHeights.NORMAL
+DEFAULT_PANEL_HEIGHT = 7
 LineAlign = Literal["left", "right"]
 
 
@@ -52,6 +68,7 @@ class _UnsetType:
 
 _UNSET = _UnsetType()
 _LABEL_TABLE_HIDDEN_COLUMNS = ("Metric", "Time", "Value", "__name__")
+_PANEL_FACTORY_NAMES = {"graph", "heatmap", "table"}
 
 
 def _next_ref(index: int) -> str:
@@ -102,6 +119,113 @@ def _label_table_transformations(
     ]
 
 
+def _called_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def _contains_panel_factory_call(node: ast.AST) -> bool:
+    return any(
+        isinstance(child, ast.Call) and _called_name(child.func) in _PANEL_FACTORY_NAMES
+        for child in ast.walk(node)
+    )
+
+
+@cache
+def _panel_assignment_ranges(path: str, function_name: str) -> tuple[tuple[int, int, str], ...]:
+    try:
+        source = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return ()
+
+    try:
+        module = ast.parse(source, filename=path)
+    except SyntaxError:
+        return ()
+
+    for node in module.body:
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        if node.name != function_name:
+            continue
+
+        assignments: list[tuple[int, int, str]] = []
+        for child in ast.walk(node):
+            target_name: str | None = None
+            value: ast.AST | None = None
+            if isinstance(child, ast.Assign) and len(child.targets) == 1:
+                target = child.targets[0]
+                if isinstance(target, ast.Name):
+                    target_name = target.id
+                    value = child.value
+            elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+                target_name = child.target.id
+                value = child.value
+
+            if target_name is None or value is None or not _contains_panel_factory_call(value):
+                continue
+
+            start = getattr(value, "lineno", None)
+            end = getattr(value, "end_lineno", start)
+            if start is None or end is None:
+                continue
+            assignments.append((start, end, target_name))
+        return tuple(sorted(assignments))
+    return ()
+
+
+def _caller_frame(depth: int):
+    frame = inspect.currentframe()
+    if frame is None:
+        return None
+    try:
+        current = frame
+        for _ in range(depth):
+            current = current.f_back
+            if current is None:
+                return None
+        return current
+    finally:
+        del frame
+
+
+def _infer_panel_key() -> str | None:
+    # Stable panel IDs should survive title edits, so the default panel key
+    # comes from the local variable name in the row builder function.
+    caller = _caller_frame(3)
+    if caller is None:
+        return None
+    try:
+        for start, end, target_name in _panel_assignment_ranges(
+            caller.f_code.co_filename,
+            caller.f_code.co_name,
+        ):
+            if start <= caller.f_lineno <= end:
+                return target_name
+        return None
+    finally:
+        del caller
+
+
+def _infer_row_key() -> str | None:
+    # Row identity should not drift when the visible row title changes, so the
+    # default row key comes from `build_xxx_row`.
+    caller = _caller_frame(3)
+    if caller is None:
+        return None
+    try:
+        function_name = caller.f_code.co_name
+    finally:
+        del caller
+
+    if function_name.startswith("build_") and function_name.endswith("_row"):
+        return function_name.removeprefix("build_").removesuffix("_row")
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class LineLayout:
     widths: tuple[int, ...]
@@ -117,6 +241,12 @@ class LineLayout:
 
 
 class LineLayouts:
+    """Named row-line layouts used by `row.add_panel(...)` and `row.add_panels(...)`.
+
+    Most rows rely on the default full / halves / thirds layouts. Keep custom
+    layouts rare and tied to a concrete dashboard compatibility need.
+    """
+
     FULL = LineLayout((ROW_WIDTH,))
     HALVES = LineLayout((ROW_WIDTH // 2, ROW_WIDTH // 2))
     HALVES_RIGHT = LineLayout((ROW_WIDTH // 2, ROW_WIDTH // 2), align="right")
@@ -136,6 +266,8 @@ def _default_layout_for_panel_count(panel_count: int) -> LineLayout:
 
 @dataclass(slots=True)
 class DashboardBuilder:
+    """Collect rows in display order and build the final dashboard spec once."""
+
     title: str
     uid: str
     variables: list[VariableSpecLike]
@@ -168,6 +300,15 @@ PanelSpecT = TypeVar("PanelSpecT", bound=PanelSpecLike)
 
 @dataclass(slots=True)
 class BasePanelBuilder(Generic[PanelSpecT]):
+    """Shared mutable panel builder.
+
+    These query helpers are the main author-facing distinction:
+
+    - `add_query()`: keep this panel type's default query behavior
+    - `add_auto_query()`: avoid an explicit `format` field
+    - `add_range_query()`: force `instant=False`
+    """
+
     title: str
     key: str | None = None
     description: str | None = None
@@ -190,6 +331,8 @@ class BasePanelBuilder(Generic[PanelSpecT]):
         format: str | None | object = _UNSET,
         instant: bool | None | object = _UNSET,
     ) -> Self:
+        """Add one target while preserving this panel type's default query mode."""
+
         resolved_format = self._default_format() if format is _UNSET else cast("str | None", format)
         resolved_instant = (
             self._default_instant() if instant is _UNSET else cast("bool | None", instant)
@@ -217,6 +360,8 @@ class BasePanelBuilder(Generic[PanelSpecT]):
         hide: bool = False,
         instant: bool | None | object = _UNSET,
     ) -> Self:
+        """Add a target without pinning an explicit `format` field in output JSON."""
+
         return self.add_query(
             expr,
             legend=legend,
@@ -237,6 +382,8 @@ class BasePanelBuilder(Generic[PanelSpecT]):
         hide: bool = False,
         format: str | None | object = _UNSET,
     ) -> Self:
+        """Add a range query for cases that must render with `instant=False`."""
+
         return self.add_query(
             expr,
             legend=legend,
@@ -265,26 +412,6 @@ class BasePanelBuilder(Generic[PanelSpecT]):
             instant=False,
         )
 
-    def add_instant_query(
-        self,
-        expr: str | Expr,
-        *,
-        legend: str | None = None,
-        legend_format: str | None = None,
-        ref: str | None = None,
-        hide: bool = False,
-        format: str | None | object = _UNSET,
-    ) -> Self:
-        return self.add_query(
-            expr,
-            legend=legend,
-            legend_format=legend_format,
-            ref=ref,
-            hide=hide,
-            format=format,
-            instant=True,
-        )
-
     def build(
         self,
         *,
@@ -297,6 +424,8 @@ class BasePanelBuilder(Generic[PanelSpecT]):
 
 @dataclass(slots=True)
 class GraphPanelBuilder(BasePanelBuilder):
+    """Default builder for numeric time-series panels."""
+
     unit: str = "short"
     min: str | int | float | None = None
     max: str | int | float | None = None
@@ -316,6 +445,8 @@ class GraphPanelBuilder(BasePanelBuilder):
         range_query: bool = False,
         format: str | None = None,
     ) -> Self:
+        """Add the common `quantile + average` graph series for one histogram."""
+
         quantile_suffix = _quantile_suffix(quantile)
         quantile_expr = expr_histogram_quantile(
             quantile,
@@ -406,6 +537,8 @@ class GraphPanelBuilder(BasePanelBuilder):
 
 @dataclass(slots=True)
 class HeatmapPanelBuilder(BasePanelBuilder):
+    """Use only for histogram bucket distributions over time."""
+
     unit: str = "short"
 
     def _default_format(self) -> str | None:
@@ -457,6 +590,8 @@ class HeatmapPanelBuilder(BasePanelBuilder):
 
 @dataclass(slots=True)
 class TablePanelBuilder(BasePanelBuilder):
+    """Use when labels or detail rows are more readable than a graph."""
+
     transformations: list[TransformationSpec] = field(default_factory=list)
 
     def _default_format(self) -> str | None:
@@ -480,6 +615,8 @@ class TablePanelBuilder(BasePanelBuilder):
         ref: str | None = None,
         hide: bool = False,
     ) -> Self:
+        """Turn metric labels into visible columns using the standard transforms."""
+
         self.add_query(
             expr,
             legend=legend,
@@ -548,7 +685,17 @@ def _build_panel(
 
 @dataclass(slots=True)
 class RowBuilder:
+    """Collect one Grafana row as one or more visual lines of panels.
+
+    Most rows should only need:
+
+    - `add_panel(panel)` for one full-width panel
+    - `add_panels(left, right)` for two half-width panels on one line
+    - `add_panels(a, b, c)` for three equal-width panels on one line
+    """
+
     title: str
+    key: str | None = None
     height: int | None = None
     collapsed: bool = True
     repeat: str | None = None
@@ -560,16 +707,9 @@ class RowBuilder:
         *,
         layout: LineLayout | None = None,
     ) -> Self:
+        """Add one panel line, or reserve a specific slot layout when needed."""
+
         return self.add_panels(panel, layout=layout)
-
-    def add_graph(self, panel: PanelInput) -> Self:
-        return self.add_panel(panel)
-
-    def add_heatmap(self, panel: PanelInput) -> Self:
-        return self.add_panel(panel)
-
-    def add_table(self, panel: PanelInput) -> Self:
-        return self.add_panel(panel)
 
     def add_half_panel(
         self,
@@ -577,17 +717,13 @@ class RowBuilder:
     ) -> Self:
         return self.add_panel(panel, layout=LineLayouts.HALVES)
 
-    def add_right_half_panel(
-        self,
-        panel: PanelInput,
-    ) -> Self:
-        return self.add_panel(panel, layout=LineLayouts.HALVES_RIGHT)
-
     def add_panels(
         self,
         *panels: PanelInput,
         layout: LineLayout | None = None,
     ) -> Self:
+        """Add 1-3 panels on the same visual line inside this row."""
+
         if not panels:
             raise ValueError("row line must contain at least one panel")
         resolved_layout = _default_layout_for_panel_count(len(panels)) if layout is None else layout
@@ -621,6 +757,7 @@ class RowBuilder:
         return build_row_spec(
             self.title,
             panels,
+            key=self.key if self.key is not None else self.title,
             collapsed=self.collapsed,
             repeat=self.repeat,
         )
@@ -635,6 +772,12 @@ def dashboard(
     annotations: list[Annotation] | None = None,
     refresh: str = "10s",
 ) -> DashboardBuilder:
+    """Create the top-level dashboard builder.
+
+    Normal row authors should not call this directly; `metrics/dashboard.py` owns
+    dashboard assembly.
+    """
+
     return DashboardBuilder(
         title=title,
         uid=uid,
@@ -648,12 +791,20 @@ def dashboard(
 def row(
     title: str,
     *,
+    key: str | None = None,
     height: int | None = None,
     collapsed: bool = True,
     repeat: str | None = None,
 ) -> RowBuilder:
+    """Create one row builder.
+
+    Set `height` only when every panel in the row should share a non-default
+    height.
+    """
+
     return RowBuilder(
         title=title,
+        key=key if key is not None else _infer_row_key(),
         height=height,
         collapsed=collapsed,
         repeat=repeat,
@@ -670,9 +821,11 @@ def graph(
     max: str | int | float | None = None,
     decimals: int | None = None,
 ) -> GraphPanelBuilder:
+    """Create the default panel type for most counter/gauge/histogram summaries."""
+
     return GraphPanelBuilder(
         title=title,
-        key=key,
+        key=key if key is not None else _infer_panel_key(),
         description=description,
         unit=unit,
         min=min,
@@ -688,9 +841,11 @@ def heatmap(
     description: str | None = None,
     unit: str = "short",
 ) -> HeatmapPanelBuilder:
+    """Create a heatmap panel for histogram bucket density over time."""
+
     return HeatmapPanelBuilder(
         title=title,
-        key=key,
+        key=key if key is not None else _infer_panel_key(),
         description=description,
         unit=unit,
     )
@@ -702,9 +857,11 @@ def table(
     key: str | None = None,
     description: str | None = None,
 ) -> TablePanelBuilder:
+    """Create a table panel for detail output such as errors or label listings."""
+
     return TablePanelBuilder(
         title=title,
-        key=key,
+        key=key if key is not None else _infer_panel_key(),
         description=description,
     )
 
@@ -715,7 +872,6 @@ __all__ = [
     "HeatmapPanelBuilder",
     "LineLayout",
     "LineLayouts",
-    "RowHeights",
     "RowBuilder",
     "TablePanelBuilder",
     "dashboard",

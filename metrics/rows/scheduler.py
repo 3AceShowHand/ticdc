@@ -78,36 +78,30 @@ def build_scheduler_row() -> RowSpec:
         legend="{{type}}-{{namespace}}-{{changefeed}}-{{mode}}",
     )
 
-    split_span_check_duration = (
-        graph(
-            "Split Span Check Duration",
-            description="duration for split span do once check",
-            unit="s",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_maintainer_split_span_check_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_maintainer_split_span_check_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_maintainer_split_span_check_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (namespace, changefeed, instance)',
-            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
+    split_span_check_duration = graph(
+        "Split Span Check Duration",
+        description="duration for split span do once check",
+        unit="s",
+    ).add_histogram(
+        "ticdc_maintainer_split_span_check_duration",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
-    operator_cost_duration = (
-        graph(
-            "Operator Cost Duration",
-            description="duration for each operator",
-            unit="s",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_maintainer_finish_operators_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, mode))',
-            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}-{{mode}}",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_maintainer_finish_operators_duration_seconds_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, mode) / sum(rate(ticdc_maintainer_finish_operators_duration_seconds_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, mode)',
-            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}-{{mode}}",
-        )
+    operator_cost_duration = graph(
+        "Operator Cost Duration",
+        description="duration for each operator",
+        unit="s",
+    ).add_histogram(
+        "ticdc_maintainer_finish_operators_duration_seconds",
+        by_labels=["namespace", "changefeed", "mode"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
     )
 
     slowest_table_checkpoint = (

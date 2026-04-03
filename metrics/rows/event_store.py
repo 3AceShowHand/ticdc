@@ -293,7 +293,7 @@ def build_event_store_row() -> RowSpec:
         legend="{{instance}}-{{type}}-p99",
     )
 
-    pebble_flush_duration_seconds = graph(
+    pebble_flush_duration_primary = graph(
         "pebble flush duration seconds",
         description="",
         unit="s",
@@ -320,7 +320,7 @@ def build_event_store_row() -> RowSpec:
         )
     )
 
-    pebble_flush_duration_seconds_2 = graph(
+    pebble_flush_duration_secondary = graph(
         "pebble flush duration seconds",
         description="",
         unit="s",
@@ -408,12 +408,12 @@ def build_event_store_row() -> RowSpec:
 
     row_builder.add_panels(
         pebble_compaction_duration_seconds,
-        pebble_flush_duration_seconds,
+        pebble_flush_duration_primary,
     )
 
     row_builder.add_panels(
         pebble_compaction_bytes,
-        pebble_flush_duration_seconds_2,
+        pebble_flush_duration_secondary,
     )
 
     row_builder.add_panels(

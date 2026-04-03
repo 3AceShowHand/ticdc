@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from metrics.dashboard_identity import DATASOURCE
+from metrics.dashboard_meta import DATASOURCE
 
 
 def _dashboard_annotation() -> dict[str, object]:

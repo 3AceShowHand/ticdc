@@ -16,7 +16,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-python_checker="$repo_root/scripts/check-ticdc-dashboard.py"
+python_checker="$repo_root/metrics/check_dashboards.py"
 
 cd "$repo_root"
 uv run python "$python_checker" "$@"

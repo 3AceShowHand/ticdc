@@ -44,21 +44,18 @@ def build_maintainer_row() -> RowSpec:
         ref="B",
     )
 
-    maintainer_handle_event_duration = (
-        graph(
-            "Maintainer Handle Event Duration",
-            unit="s",
-            min="0",
-            decimals=0,
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_maintainer_handle_event_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed))',
-            legend="99.9-{{namespace}}-{{changefeed}}",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_maintainer_handle_event_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed) / sum(rate(ticdc_maintainer_handle_event_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed)',
-            legend="avg-{{namespace}}-{{changefeed}}",
-        )
+    maintainer_handle_event_duration = graph(
+        "Maintainer Handle Event Duration",
+        unit="s",
+        min="0",
+        decimals=0,
+    ).add_histogram(
+        "ticdc_maintainer_handle_event_duration",
+        by_labels=["namespace", "changefeed"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}",
     )
 
     maintainer_event_channel_length = graph(

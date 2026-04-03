@@ -324,21 +324,21 @@ metrics-python-typecheck:
 metrics-python-check:
 	@echo "metrics-python-check"
 	@uv run ty check
-	@uv run ruff format --check metrics scripts
-	@uv run ruff check metrics scripts
+	@uv run ruff format --check metrics
+	@uv run ruff check metrics
 	@./scripts/check-ticdc-dashboard.sh
 
 check-ticdc-dashboard: metrics-python-check
 
 metrics-python-test:
 	@echo "metrics-python-test"
-	@uv run python -m unittest discover -s scripts -p 'test_*.py' -v
+	@uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
 
 test-ticdc-dashboard-tools: metrics-python-test
 
 metrics-python-generate:
 	@echo "metrics-python-generate"
-	@uv run python ./scripts/gen-ticdc-dashboards
+	@uv run python ./metrics/generate_dashboards.py
 
 generate-next-gen-grafana: metrics-python-generate
 

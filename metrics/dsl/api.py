@@ -19,20 +19,16 @@ from typing import TypeVar
 
 from .specs import (
     Annotation,
-    AxisSpec,
     CustomVarSpec,
     DashboardSpec,
     GraphPanelSpec,
     HeatmapPanelSpec,
-    LegendSpec,
     PanelSpecLike,
     QueryVarSpec,
     RowSpec,
     ScalarOrNone,
-    SeriesOverrideSpec,
     TablePanelSpec,
     TargetSpec,
-    ThresholdSpec,
     TransformationSpec,
     VariableSpecLike,
 )
@@ -83,12 +79,19 @@ def dashboard(
 def row(
     title: str,
     panels: Sequence[PanelSpecLike],
+    key: str | None = None,
     collapsed: bool = True,
     repeat: str | None = None,
 ) -> RowSpec:
     """Group panels into one Grafana row."""
 
-    return RowSpec(title=title, panels=list(panels), collapsed=collapsed, repeat=repeat)
+    return RowSpec(
+        title=title,
+        panels=list(panels),
+        key=key,
+        collapsed=collapsed,
+        repeat=repeat,
+    )
 
 
 def graph(
@@ -105,12 +108,7 @@ def graph(
     min: ScalarOrNone = None,
     max: ScalarOrNone = None,
     decimals: int | None = None,
-    stack: bool = False,
     fill: int = 1,
-    legend: LegendSpec | None = None,
-    axis: AxisSpec | None = None,
-    thresholds: Sequence[ThresholdSpec] | None = None,
-    overrides: Sequence[SeriesOverrideSpec] | None = None,
 ) -> GraphPanelSpec:
     """Build a classic Grafana graph panel.
 
@@ -130,12 +128,7 @@ def graph(
         min=min,
         max=max,
         decimals=decimals,
-        stack=stack,
         fill=fill,
-        legend=legend,
-        axis=axis,
-        thresholds=_copy_items(thresholds),
-        overrides=_copy_items(overrides),
     )
 
 
@@ -252,27 +245,6 @@ def target(
 
     return TargetSpec(
         expr=expr,
-        legend=legend,
-        ref=ref,
-        hide=hide,
-        format=format,
-        instant=instant,
-    )
-
-
-def query(
-    expr: str,
-    *,
-    legend: str | None = None,
-    ref: str = "A",
-    hide: bool = False,
-    format: str | None = None,
-    instant: bool | None = None,
-) -> TargetSpec:
-    """Readable alias for `target()` when authoring PromQL."""
-
-    return target(
-        expr,
         legend=legend,
         ref=ref,
         hide=hide,

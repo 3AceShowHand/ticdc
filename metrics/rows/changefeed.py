@@ -124,6 +124,8 @@ def build_changefeed_row() -> RowSpec:
         node_table_count,
         changefeed_table_count,
         gc_time,
+        # Keep the legacy 1/4 + 1/4 + 1/2 split so this row stays visually
+        # compatible with the checked-in dashboard layout.
         layout=LineLayouts.QUARTER_QUARTER_HALF,
     )
 

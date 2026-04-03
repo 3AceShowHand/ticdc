@@ -33,21 +33,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{id}}-{{instance}}",
     )
 
-    flush_duration = (
-        graph(
-            "Flush Duration",
-            description="The time duration of flush data to the external storage system",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_sink_cloud_storage_flush_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-p99",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_cloud_storage_flush_duration_seconds_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_cloud_storage_flush_duration_seconds_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    flush_duration = graph(
+        "Flush Duration",
+        description="The time duration of flush data to the external storage system",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_cloud_storage_flush_duration_seconds",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
     )
 
     file_count_s = graph(
@@ -69,21 +63,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{instance}}-{{reason}}",
     )
 
-    flush_dml_by_ddl_block_duration = (
-        graph(
-            "Flush DML By DDL Block Duration",
-            description="The time duration of flush DMLs by the DDL",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-p99",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    flush_dml_by_ddl_block_duration = graph(
+        "Flush DML By DDL Block Duration",
+        description="The time duration of flush DMLs by the DDL",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
     )
 
     spool_memory_bytes = graph(
@@ -156,21 +144,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
-    spool_disk_quota_wait_duration = (
-        graph(
-            "Spool Disk Quota Wait Duration",
-            description="The time duration of waiting for the spool disk quota",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-p99",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    spool_disk_quota_wait_duration = graph(
+        "Spool Disk Quota Wait Duration",
+        description="The time duration of waiting for the spool disk quota",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
     )
 
     row_builder.add_panels(

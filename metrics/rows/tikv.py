@@ -391,7 +391,7 @@ def build_tikv_row() -> RowSpec:
 
     row_builder.add_panels(old_value_cache_hit, min_resolved_region)
 
-    old_value_seek_duration = heatmap(
+    old_value_seek_duration_heatmap = heatmap(
         "Old Value Seek Duration",
         key="old_value_seek_duration_heatmap",
         description="The time consumed to get an old value (both from cache and from disk)",
@@ -433,34 +433,22 @@ def build_tikv_row() -> RowSpec:
         )
     )
 
-    row_builder.add_panels(old_value_seek_duration, old_value_cache_size)
+    row_builder.add_panels(old_value_seek_duration_heatmap, old_value_cache_size)
 
-    old_value_seek_duration_2 = (
-        graph(
-            "Old Value Seek Duration",
-            key="old_value_seek_duration_graph",
-            description="",
-            unit="s",
-            min="0",
-        )
-        .add_query(
-            expr_histogram_quantile(
-                0.999,
-                "tikv_cdc_old_value_duration",
-                by_labels=["instance", "tag"],
-                scope="tikv_instance",
-            ),
-            legend_format="{{instance}}-99%-{{tag}}",
-        )
-        .add_query(
-            expr_histogram_avg(
-                "tikv_cdc_old_value_duration",
-                by_labels=["instance", "tag"],
-                scope="tikv_instance",
-            ),
-            legend_format="{{instance}}-avg-{{tag}}",
-            ref="C",
-        )
+    old_value_seek_duration_graph = graph(
+        "Old Value Seek Duration",
+        key="old_value_seek_duration_graph",
+        description="",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "tikv_cdc_old_value_duration",
+        by_labels=["instance", "tag"],
+        scope="tikv_instance",
+        quantile=0.999,
+        quantile_legend="{{instance}}-99%-{{tag}}",
+        average_legend="{{instance}}-avg-{{tag}}",
+        format="time_series",
     )
 
     old_value_seek_operation = graph(
@@ -474,7 +462,7 @@ def build_tikv_row() -> RowSpec:
     )
 
     row_builder.add_panels(
-        old_value_seek_duration_2,
+        old_value_seek_duration_graph,
         old_value_seek_operation,
     )
 

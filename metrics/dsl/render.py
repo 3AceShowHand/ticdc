@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Final
 
-from metrics.dashboard_identity import DATASOURCE, DATASOURCE_INPUT
+from metrics.dashboard_meta import DATASOURCE, DATASOURCE_INPUT
 
 from .specs import (
     CustomVarSpec,
@@ -334,7 +334,7 @@ def render_row(
         panel_id = next_panel_id
         if panel_id_resolver is not None:
             panel_id = panel_id_resolver(
-                spec.title,
+                spec.key if spec.key is not None else spec.title,
                 panel_spec,
                 next_panel_id,
                 used_ids,

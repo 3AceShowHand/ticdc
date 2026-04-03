@@ -3,18 +3,31 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
+"""Top-level dashboard assembly.
+
+Most dashboard edits stop in `metrics/rows/*.py`. This file is only responsible
+for ordering rows and wiring dashboard-wide metadata, templating, and
+annotations.
+"""
+
 from __future__ import annotations
+
+from pathlib import Path
 
 from metrics.annotations import build_annotations
 from metrics.builders import dashboard as dashboard_builder
-from metrics.dashboard_baseline import validate_dashboard_compatibility
-from metrics.dashboard_identity import (
+from metrics.dashboard_meta import (
     BASE_DASHBOARD_TITLE,
     BASE_DASHBOARD_UID,
     DASHBOARD_VERSION,
 )
-from metrics.dsl import render_dashboard
+from metrics.dsl.render import PanelIdResolver, render_dashboard
 from metrics.dsl.specs import DashboardSpec
+from metrics.panel_ids import (
+    PANEL_ID_REGISTRY_FILE,
+    build_panel_id_resolver,
+    load_panel_id_registry,
+)
 from metrics.rows import (
     build_active_active_row,
     build_changefeed_row,
@@ -45,6 +58,7 @@ from metrics.rows import (
 )
 from metrics.templating import build_templating
 
+# Single source of row display order in the rendered dashboard.
 ROW_BUILDERS = [
     build_summary_row,
     build_lag_summary_row,
@@ -76,6 +90,8 @@ ROW_BUILDERS = [
 
 
 def build_dashboard_spec() -> DashboardSpec:
+    """Build the immutable dashboard spec before rendering JSON."""
+
     spec = dashboard_builder(
         title=BASE_DASHBOARD_TITLE,
         uid=BASE_DASHBOARD_UID,
@@ -89,10 +105,30 @@ def build_dashboard_spec() -> DashboardSpec:
 
 
 def build_dashboard() -> dict[str, object]:
-    spec = build_dashboard_spec()
-    rendered = render_dashboard(spec)
-    validate_dashboard_compatibility(
-        rendered,
-        expected_row_titles=[row.title for row in spec.rows],
+    """Render the final Grafana JSON payload used by generation scripts."""
+
+    return render_dashboard(
+        build_dashboard_spec(),
+        panel_id_resolver=load_stable_panel_id_resolver(),
     )
-    return rendered
+
+
+def build_dashboard_with_panel_ids(
+    spec: DashboardSpec,
+    panel_id_resolver: PanelIdResolver | None,
+) -> dict[str, object]:
+    """Render one dashboard spec with an explicit panel ID resolver."""
+
+    return render_dashboard(spec, panel_id_resolver=panel_id_resolver)
+
+
+def load_stable_panel_id_resolver(
+    repo_root: Path | None = None,
+) -> PanelIdResolver | None:
+    """Load the checked-in stable panel ID registry when it exists."""
+
+    resolved_root = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
+    registry_path = resolved_root / PANEL_ID_REGISTRY_FILE
+    if not registry_path.exists():
+        return None
+    return build_panel_id_resolver(load_panel_id_registry(registry_path))

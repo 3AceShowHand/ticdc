@@ -12,21 +12,18 @@ from metrics.dsl.specs import RowSpec
 def build_sink_mq_row() -> RowSpec:
     row_builder = row("Sink - MQ Sink")
 
-    worker_send_message_duration_percentile = (
-        graph(
-            "Worker Send Message Duration Percentile",
-            description="MQ worker send messages to Kafka. This metric records the time cost of sending each message.",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_mq_worker_send_message_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_mq_worker_send_message_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_mq_worker_send_message_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    worker_send_message_duration_percentile = graph(
+        "Worker Send Message Duration Percentile",
+        description="MQ worker send messages to Kafka. This metric records the time cost of sending each message.",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_mq_worker_send_message_duration",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
     )
 
     kafka_outgoing_bytes = graph(
@@ -91,7 +88,6 @@ def build_sink_mq_row() -> RowSpec:
 
     encoder_group_input_channel_size = graph(
         "Encoder Group Input Channel Size",
-        description="",
         unit="none",
         min="0",
     ).add_auto_query(
@@ -101,7 +97,6 @@ def build_sink_mq_row() -> RowSpec:
 
     encoder_group_output_channel_size = graph(
         "Encoder Group Output Channel Size",
-        description="",
         unit="none",
         min="0",
     ).add_auto_query(
@@ -109,38 +104,32 @@ def build_sink_mq_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
-    worker_batch_duration_percentile = (
-        graph(
-            "Worker Batch Duration Percentile",
-            description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric records batch latency.",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_mq_worker_batch_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_mq_worker_batch_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_mq_worker_batch_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    worker_batch_duration_percentile = graph(
+        "Worker Batch Duration Percentile",
+        description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric records batch latency.",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_mq_worker_batch_duration",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
     )
 
-    worker_batch_size_percentile = (
-        graph(
-            "Worker Batch Size Percentile",
-            description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric tracks each batch size.",
-            unit="none",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_mq_worker_batch_size_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_mq_worker_batch_size_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_mq_worker_batch_size_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    worker_batch_size_percentile = graph(
+        "Worker Batch Size Percentile",
+        description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric tracks each batch size.",
+        unit="none",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_mq_worker_batch_size",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
     )
 
     claim_check_send_message_count = graph(
@@ -179,21 +168,18 @@ def build_sink_mq_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
     )
 
-    worker_encode_and_send_checkpoint_message_duration = (
-        graph(
-            "Worker Encode and Send Checkpoint Message Duration",
-            description="This metric records the time cost of encoding and sending checkpointTs messages downstream.",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_mq_checkpoint_ts_message_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_mq_checkpoint_ts_message_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_mq_checkpoint_ts_message_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
-        )
+    worker_encode_and_send_checkpoint_message_duration = graph(
+        "Worker Encode and Send Checkpoint Message Duration",
+        description="This metric records the time cost of encoding and sending checkpointTs messages downstream.",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_mq_checkpoint_ts_message_duration",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
     )
 
     row_builder.add_panels(

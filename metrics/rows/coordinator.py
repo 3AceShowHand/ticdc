@@ -21,20 +21,17 @@ def build_coordinator_row() -> RowSpec:
         legend="{{namespace}}-{{changefeed}}-{{state}}",
     )
 
-    coordinator_operator_cost_duration = (
-        graph(
-            "Coordinator Operator Cost Duration",
-            description="duration for each operator for changefeed",
-            unit="s",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_coordinator_finish_operators_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, mode))',
-            legend="99.9",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_coordinator_finish_operators_duration_seconds_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, mode) / sum(rate(ticdc_coordinator_finish_operators_duration_seconds_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, mode)',
-            legend="avg",
-        )
+    coordinator_operator_cost_duration = graph(
+        "Coordinator Operator Cost Duration",
+        description="duration for each operator for changefeed",
+        unit="s",
+    ).add_histogram(
+        "ticdc_coordinator_finish_operators_duration_seconds",
+        by_labels=["namespace", "changefeed", "mode"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
     )
 
     coordinator_history = graph(

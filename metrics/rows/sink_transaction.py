@@ -18,40 +18,35 @@ def build_sink_transaction_row() -> RowSpec:
             description="Duration of event staying in conflict detector",
             unit="s",
         )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_txn_conflict_detect_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-P999",
-            ref="C",
+        .add_histogram(
+            "ticdc_sink_txn_conflict_detect_duration",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+            quantile=0.999,
+            quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-P999",
+            average_legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-avg",
         )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_txn_conflict_detect_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (changefeed, instance) / sum(rate(ticdc_sink_txn_conflict_detect_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-avg",
-            ref="D",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_txn_queue_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-P999",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_txn_queue_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_txn_queue_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-avg",
+        .add_histogram(
+            "ticdc_sink_txn_queue_duration",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+            quantile=0.999,
+            quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-P999",
+            average_legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-avg",
         )
     )
 
-    full_flush_duration = (
-        graph(
-            "Full Flush Duration",
-            description="Full flush (backend flush + callback + conflict detector notify) duration",
-            unit="s",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_txn_worker_flush_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_txn_worker_flush_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_txn_worker_flush_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
+    full_flush_duration = graph(
+        "Full Flush Duration",
+        description="Full flush (backend flush + callback + conflict detector notify) duration",
+        unit="s",
+    ).add_histogram(
+        "ticdc_sink_txn_worker_flush_duration",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
     worker_busy_ratio = graph(
@@ -66,28 +61,24 @@ def build_sink_transaction_row() -> RowSpec:
 
     worker_input_rows_s = graph(
         "Worker Input Rows / s",
-        description="",
         min="0",
     ).add_auto_query(
         'sum(rate(ticdc_sink_txn_worker_handled_rows{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance, id)',
         legend="{{namespace}}-{{changefeed}}-{{instance}}-{{id}}",
     )
 
-    backend_flush_duration = (
-        graph(
-            "Backend Flush Duration",
-            description="Distribution of flush transaction duration to backend",
-            unit="s",
-            min="0",
-        )
-        .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_txn_sink_dml_batch_commit_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
-            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
-        .add_auto_query(
-            'sum(rate(ticdc_sink_txn_sink_dml_batch_commit_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_txn_sink_dml_batch_commit_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
-        )
+    backend_flush_duration = graph(
+        "Backend Flush Duration",
+        description="Distribution of flush transaction duration to backend",
+        unit="s",
+        min="0",
+    ).add_histogram(
+        "ticdc_sink_txn_sink_dml_batch_commit",
+        by_labels=["namespace", "changefeed", "instance"],
+        scope="changefeed",
+        quantile=0.999,
+        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
     row_affected_count_m = graph(

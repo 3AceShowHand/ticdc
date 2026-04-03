@@ -3,7 +3,13 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
-"""TiKV-style PromQL and panel helper facade for TiCDC dashboards."""
+"""TiKV-style PromQL and target helper facade for TiCDC dashboards.
+
+Treat this module as the PromQL helper layer for row files:
+
+- `expr_*` helpers build scoped PromQL expressions
+- `target()` turns an expression into a Grafana query and can infer legends
+"""
 
 from __future__ import annotations
 
@@ -12,19 +18,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from metrics.dsl.api import (
-    graph as _build_graph_panel,
-)
-from metrics.dsl.api import (
-    heatmap as _build_heatmap_panel,
-)
-from metrics.dsl.api import (
-    table as _build_table_panel,
-)
-from metrics.dsl.api import (
     target as build_target,
-)
-from metrics.dsl.api import (
-    transformation as transformation,
 )
 from metrics.dsl.promql import (
     LabelMatcher,
@@ -43,13 +37,7 @@ from metrics.dsl.promql import (
 from metrics.dsl.promql import (
     regex as regex,
 )
-from metrics.dsl.specs import (
-    GraphPanelSpec,
-    HeatmapPanelSpec,
-    TablePanelSpec,
-    TargetSpec,
-    TransformationSpec,
-)
+from metrics.dsl.specs import TargetSpec
 
 type SelectorLike = LabelMatcher | str
 type SelectorSeq = Sequence[SelectorLike]
@@ -86,7 +74,10 @@ class Expr:
         return Expr(f"{func}({inner})", by_labels=self.by_labels)
 
     def op(self, operator: str, rhs: Expr | str) -> Expr:
-        return Expr(f"{self} {operator} {rhs}")
+        by_labels = self.by_labels
+        if isinstance(rhs, Expr) and rhs.by_labels not in ((), self.by_labels):
+            by_labels = ()
+        return Expr(f"{self} {operator} {rhs}", by_labels=by_labels)
 
 
 def _render_selector(selector_value: SelectorLike) -> str:
@@ -146,6 +137,8 @@ def expr_simple(
     scope: ScopeName | None = None,
     selectors: SelectorSeq = (),
 ) -> Expr:
+    """Attach the standard TiCDC scope selectors to a metric or pass through PromQL."""
+
     if isinstance(value, Expr):
         if scope not in (None, "none") or selectors:
             raise ValueError("prebuilt expressions cannot receive scope or selectors")
@@ -212,6 +205,8 @@ def expr_sum(
     scope: ScopeName | None = None,
     selectors: SelectorSeq = (),
 ) -> Expr:
+    """Aggregate a metric or expression with `sum ... by (...)`."""
+
     return _aggregate(
         "sum",
         expr_simple(value, scope=scope, selectors=selectors),
@@ -242,34 +237,6 @@ def expr_max(
 ) -> Expr:
     return _aggregate(
         "max",
-        expr_simple(value, scope=scope, selectors=selectors),
-        by_labels=_resolve_by_labels(by_labels),
-    )
-
-
-def expr_min(
-    value: str | Expr,
-    *,
-    by_labels: LabelSeq | None = None,
-    scope: ScopeName | None = None,
-    selectors: SelectorSeq = (),
-) -> Expr:
-    return _aggregate(
-        "min",
-        expr_simple(value, scope=scope, selectors=selectors),
-        by_labels=_resolve_by_labels(by_labels),
-    )
-
-
-def expr_count(
-    value: str | Expr,
-    *,
-    by_labels: LabelSeq | None = None,
-    scope: ScopeName | None = None,
-    selectors: SelectorSeq = (),
-) -> Expr:
-    return _aggregate(
-        "count",
         expr_simple(value, scope=scope, selectors=selectors),
         by_labels=_resolve_by_labels(by_labels),
     )
@@ -343,22 +310,6 @@ def expr_max_rate(
     )
 
 
-def expr_count_rate(
-    value: str | Expr,
-    *,
-    by_labels: LabelSeq | None = None,
-    scope: ScopeName | None = None,
-    selectors: SelectorSeq = (),
-    window: str = "1m",
-) -> Expr:
-    resolved_scope = _resolve_scope(scope)
-    return _aggregate(
-        "count",
-        expr_rate(value, scope=resolved_scope, selectors=selectors, window=window),
-        by_labels=_resolve_by_labels(by_labels),
-    )
-
-
 def expr_sum_delta(
     value: str | Expr,
     *,
@@ -394,21 +345,6 @@ def expr_sum_increase(
         ),
         by_labels=_resolve_by_labels(by_labels),
     )
-
-
-def expr_over_time(
-    func: str,
-    value: str | Expr,
-    *,
-    scope: ScopeName = "none",
-    selectors: SelectorSeq = (),
-    window: str,
-) -> Expr:
-    return expr_simple(
-        value,
-        scope=scope,
-        selectors=selectors,
-    ).call(func, range_selector=window)
 
 
 def expr_operator(lhs: str | Expr, operator: str, rhs: str | Expr) -> Expr:
@@ -470,24 +406,6 @@ def expr_histogram_avg(
     )
 
 
-def heatmap_expr(
-    metric: str,
-    *,
-    by_labels: LabelSeq = (),
-    scope: ScopeName = "instance",
-    selectors: SelectorSeq = (),
-    window: str = "1m",
-) -> Expr:
-    bucket_metric = metric if metric.endswith("_bucket") else f"{metric}_bucket"
-    return expr_sum_rate(
-        bucket_metric,
-        by_labels=("le", *by_labels),
-        scope=scope,
-        selectors=selectors,
-        window=window,
-    )
-
-
 def target(
     expr: str | Expr,
     legend_format: str | None = None,
@@ -498,6 +416,12 @@ def target(
     format: str | None = "time_series",
     instant: bool | None = None,
 ) -> TargetSpec:
+    """Build one Grafana target.
+
+    When `expr` carries `by_labels`, the legend is inferred automatically unless
+    the caller overrides it.
+    """
+
     if legend_format is not None and legend is not None and legend_format != legend:
         raise ValueError("legend and legend_format must match when both are set")
     resolved_legend = legend_format or legend
@@ -513,318 +437,26 @@ def target(
     )
 
 
-def heatmap_target(
-    expr: str | Expr,
-    legend_format: str = "{{le}}",
-    *,
-    legend: str | None = None,
-    ref: str = "A",
-    hide: bool = False,
-) -> TargetSpec:
-    return target(
-        expr=expr,
-        legend_format=legend_format if legend is None else legend,
-        ref=ref,
-        hide=hide,
-        format="heatmap",
-        instant=False,
-    )
-
-
-def graph_panel(
-    title: str,
-    *,
-    targets: list[TargetSpec],
-    key: str | None = None,
-    description: str | None = None,
-    unit: str = "short",
-    min: str | int | float | None = None,
-    max: str | int | float | None = None,
-    decimals: int | None = None,
-    span: int | None = None,
-    width: int | None = None,
-    height: int = 7,
-    x: int | None = None,
-) -> GraphPanelSpec:
-    return _build_graph_panel(
-        title,
-        targets=targets,
-        key=key,
-        description=description,
-        unit=unit,
-        min=min,
-        max=max,
-        decimals=decimals,
-        span=span,
-        width=width,
-        height=height,
-        x=x,
-    )
-
-
-def heatmap_panel(
-    title: str,
-    *,
-    targets: list[TargetSpec],
-    key: str | None = None,
-    description: str | None = None,
-    unit: str = "short",
-    span: int | None = None,
-    width: int | None = None,
-    height: int = 7,
-    x: int | None = None,
-) -> HeatmapPanelSpec:
-    return _build_heatmap_panel(
-        title,
-        targets=targets,
-        key=key,
-        description=description,
-        unit=unit,
-        span=span,
-        width=width,
-        height=height,
-        x=x,
-    )
-
-
-def table_panel(
-    title: str,
-    *,
-    targets: list[TargetSpec],
-    key: str | None = None,
-    description: str | None = None,
-    span: int | None = None,
-    width: int | None = None,
-    height: int = 7,
-    x: int | None = None,
-    transformations: Sequence[TransformationSpec] | None = None,
-) -> TablePanelSpec:
-    return _build_table_panel(
-        title,
-        targets=targets,
-        key=key,
-        description=description,
-        span=span,
-        width=width,
-        height=height,
-        x=x,
-        transformations=transformations,
-    )
-
-
-def histogram_heatmap_panel(
-    title: str,
-    *,
-    metric: str,
-    by_labels: LabelSeq = (),
-    by: LabelSeq | None = None,
-    scope: ScopeName = "instance",
-    selectors: SelectorSeq = (),
-    matchers: SelectorSeq | None = None,
-    description: str | None = None,
-    unit: str = "short",
-    span: int | None = None,
-    width: int = 12,
-    height: int = 7,
-    window: str = "1m",
-) -> HeatmapPanelSpec:
-    if by is not None:
-        by_labels = by
-    if matchers is not None:
-        selectors = matchers
-        if scope == "instance":
-            scope = "none"
-    return heatmap_panel(
-        title=title,
-        targets=[
-            heatmap_target(
-                expr=heatmap_expr(
-                    metric,
-                    by_labels=by_labels,
-                    scope=scope,
-                    selectors=selectors,
-                    window=window,
-                )
-            )
-        ],
-        description=description,
-        unit=unit,
-        span=span,
-        width=width,
-        height=height,
-    )
-
-
-def histogram_quantile_graph_panel(
-    title: str,
-    *,
-    metric: str,
-    by_labels: LabelSeq = (),
-    by: LabelSeq | None = None,
-    scope: ScopeName = "instance",
-    selectors: SelectorSeq = (),
-    matchers: SelectorSeq | None = None,
-    description: str | None = None,
-    unit: str = "short",
-    min: str | int | float | None = None,
-    max: str | int | float | None = None,
-    decimals: int | None = None,
-    span: int | None = None,
-    width: int = 12,
-    height: int = 7,
-    x: int | None = None,
-    window: str = "1m",
-    quantile: float = 0.99,
-    quantile_legend: str | None = None,
-    average_legend: str | None = None,
-    format: str | None = None,
-) -> GraphPanelSpec:
-    if by is not None:
-        by_labels = by
-    if matchers is not None:
-        selectors = matchers
-        if scope == "instance":
-            scope = "none"
-    quantile_prefix = str(quantile).replace(".", "")
-    quantile_legend_format = quantile_legend or legend_for(
-        *by_labels,
-        prefix=f"p{quantile_prefix}",
-    )
-    return graph_panel(
-        title=title,
-        targets=[
-            target(
-                expr=expr_histogram_quantile(
-                    quantile,
-                    metric,
-                    by_labels=by_labels,
-                    scope=scope,
-                    selectors=selectors,
-                    window=window,
-                ),
-                legend_format=quantile_legend_format,
-                format=format,
-            ),
-            target(
-                expr=expr_histogram_avg(
-                    metric,
-                    by_labels=by_labels,
-                    scope=scope,
-                    selectors=selectors,
-                    window=window,
-                ),
-                legend_format=average_legend or legend_for(*by_labels, prefix="avg"),
-                ref="B",
-                format=format,
-            ),
-        ],
-        description=description,
-        unit=unit,
-        min=min,
-        max=max,
-        decimals=decimals,
-        span=span,
-        width=width,
-        height=height,
-        x=x,
-    )
-
-
-def histogram_panel_pair(
-    *,
-    heatmap_title: str,
-    graph_title: str,
-    metric: str,
-    by_labels: LabelSeq = (),
-    by: LabelSeq | None = None,
-    scope: ScopeName = "instance",
-    selectors: SelectorSeq = (),
-    matchers: SelectorSeq | None = None,
-    unit: str = "short",
-    span: int | None = None,
-    width: int = 12,
-    height: int = 7,
-    heatmap_description: str | None = None,
-    graph_description: str | None = None,
-    window: str = "1m",
-    quantile: float = 0.99,
-    quantile_legend: str | None = None,
-    average_legend: str | None = None,
-    format: str | None = None,
-) -> list[HeatmapPanelSpec | GraphPanelSpec]:
-    if by is not None:
-        by_labels = by
-    if matchers is not None:
-        selectors = matchers
-        if scope == "instance":
-            scope = "none"
-    return [
-        histogram_heatmap_panel(
-            title=heatmap_title,
-            metric=metric,
-            by_labels=by_labels,
-            scope=scope,
-            selectors=selectors,
-            description=heatmap_description,
-            unit=unit,
-            span=span,
-            width=width,
-            height=height,
-            window=window,
-        ),
-        histogram_quantile_graph_panel(
-            title=graph_title,
-            metric=metric,
-            by_labels=by_labels,
-            scope=scope,
-            selectors=selectors,
-            description=graph_description,
-            unit=unit,
-            span=span,
-            width=width,
-            height=height,
-            window=window,
-            quantile=quantile,
-            quantile_legend=quantile_legend,
-            average_legend=average_legend,
-            format=format,
-        ),
-    ]
-
-
 __all__ = [
     "Expr",
     "eq",
     "expr_avg",
-    "expr_count",
-    "expr_count_rate",
     "expr_delta",
     "expr_histogram_avg",
     "expr_histogram_quantile",
     "expr_increase",
     "expr_max",
     "expr_max_rate",
-    "expr_min",
     "expr_operator",
-    "expr_over_time",
     "expr_rate",
     "expr_simple",
     "expr_sum",
     "expr_sum_delta",
     "expr_sum_increase",
     "expr_sum_rate",
-    "graph_panel",
-    "heatmap_expr",
-    "heatmap_panel",
-    "heatmap_target",
-    "histogram_heatmap_panel",
-    "histogram_panel_pair",
-    "histogram_quantile_graph_panel",
     "legend_for",
     "neq",
     "not_regex",
     "regex",
-    "table_panel",
     "target",
-    "transformation",
 ]

@@ -1,0 +1,1797 @@
+{
+  "next_id": 257,
+  "panels": [
+    {
+      "row_key": "summary",
+      "panel_key": "changefeed_checkpoint_lag",
+      "id": 1,
+      "row_title": "Summary",
+      "panel_title": "Changefeed Checkpoint Lag"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "changefeed_resolved_ts_lag",
+      "id": 2,
+      "row_title": "Summary",
+      "panel_title": "Changefeed Resolved Ts Lag"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "upstream_write_bytes_s",
+      "id": 3,
+      "row_title": "Summary",
+      "panel_title": "Upstream Write Bytes / s"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "ticdc_input_bytes_s",
+      "id": 4,
+      "row_title": "Summary",
+      "panel_title": "TiCDC Input Bytes / s"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "sink_event_row_count_s",
+      "id": 5,
+      "row_title": "Summary",
+      "panel_title": "Sink Event Row Count / s"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "sink_write_bytes_s",
+      "id": 6,
+      "row_title": "Summary",
+      "panel_title": "Sink Write Bytes / s"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "the_status_of_changefeeds",
+      "id": 7,
+      "row_title": "Summary",
+      "panel_title": "The Status of Changefeeds"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "table_dispatcher_count",
+      "id": 8,
+      "row_title": "Summary",
+      "panel_title": "Table Dispatcher Count"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "memory_quota",
+      "id": 9,
+      "row_title": "Summary",
+      "panel_title": "Memory Quota"
+    },
+    {
+      "row_key": "summary",
+      "panel_key": "table_count",
+      "id": 10,
+      "row_title": "Summary",
+      "panel_title": "Table Count"
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "maintainer_checkpoint_lag",
+      "id": 11,
+      "row_title": "Lag Summary",
+      "panel_title": "Maintainer Checkpoint Lag"
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "maintainer_resolved_ts_lag",
+      "id": 12,
+      "row_title": "Lag Summary",
+      "panel_title": "Maintainer Resolved Ts lag"
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "eventstore_resolved_ts_lag",
+      "id": 13,
+      "row_title": "Lag Summary",
+      "panel_title": "EventStore Resolved Ts Lag "
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "eventservice_resolved_ts_lag",
+      "id": 14,
+      "row_title": "Lag Summary",
+      "panel_title": "EventService Resolved Ts Lag "
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "dispatchermanager_checkpoint_lag",
+      "id": 15,
+      "row_title": "Lag Summary",
+      "panel_title": "DispatcherManager Checkpoint Lag"
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "dispatchermanager_resolved_ts_lag",
+      "id": 16,
+      "row_title": "Lag Summary",
+      "panel_title": "DispatcherManager Resolved Ts Lag"
+    },
+    {
+      "row_key": "lag_summary",
+      "panel_key": "eventcollector_resolved_ts_lag",
+      "id": 17,
+      "row_title": "Lag Summary",
+      "panel_title": "EventCollector Resolved Ts Lag"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "puller_output_events_s",
+      "id": 18,
+      "row_title": "Dataflow",
+      "panel_title": "Puller Output Events / s"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "puller_output_event_rows",
+      "id": 19,
+      "row_title": "Dataflow",
+      "panel_title": "Puller Output Event Rows"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "eventservice_output_event_row_s",
+      "id": 20,
+      "row_title": "Dataflow",
+      "panel_title": "EventService Output Event Row / s"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "eventservice_output_event_rows",
+      "id": 21,
+      "row_title": "Dataflow",
+      "panel_title": "EventService Output Event Rows"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "event_collector_received_event_rows_s",
+      "id": 22,
+      "row_title": "Dataflow",
+      "panel_title": "Event Collector Received Event Rows / s"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "event_collector_received_event_rows",
+      "id": 23,
+      "row_title": "Dataflow",
+      "panel_title": "Event Collector Received Event Rows"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "sink_flush_rows_s",
+      "id": 24,
+      "row_title": "Dataflow",
+      "panel_title": "Sink Flush Rows / s"
+    },
+    {
+      "row_key": "dataflow",
+      "panel_key": "sink_flush_rows",
+      "id": 25,
+      "row_title": "Dataflow",
+      "panel_title": "Sink Flush Rows"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "uptime",
+      "id": 26,
+      "row_title": "Server",
+      "panel_title": "Uptime"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "cpu_usage",
+      "id": 27,
+      "row_title": "Server",
+      "panel_title": "CPU Usage"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "goroutine_count",
+      "id": 28,
+      "row_title": "Server",
+      "panel_title": "Goroutine Count"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "memory_usage",
+      "id": 29,
+      "row_title": "Server",
+      "panel_title": "Memory Usage"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "open_fd_count",
+      "id": 30,
+      "row_title": "Server",
+      "panel_title": "Open FD Count"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "ownership_history",
+      "id": 31,
+      "row_title": "Server",
+      "panel_title": "Ownership History"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "pd_leader_history",
+      "id": 32,
+      "row_title": "Server",
+      "panel_title": "PD Leader History"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "build_info",
+      "id": 33,
+      "row_title": "Server",
+      "panel_title": "Build Info"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "log_write_speed",
+      "id": 34,
+      "row_title": "Server",
+      "panel_title": "Log Write Speed"
+    },
+    {
+      "row_key": "server",
+      "panel_key": "log_size_disk_usage",
+      "id": 35,
+      "row_title": "Server",
+      "panel_title": "Log Size & Disk Usage"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "node_table_count",
+      "id": 36,
+      "row_title": "Changefeed",
+      "panel_title": "Node Table Count"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_table_count",
+      "id": 37,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Table Count"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "gc_time",
+      "id": 38,
+      "row_title": "Changefeed",
+      "panel_title": "GC Time"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_checkpoint",
+      "id": 39,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Checkpoint"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_resolved_ts",
+      "id": 40,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Resolved Ts"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_checkpoint_lag",
+      "id": 41,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Checkpoint Lag"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_resolved_ts_lag",
+      "id": 42,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Resolved Ts Lag"
+    },
+    {
+      "row_key": "changefeed",
+      "panel_key": "changefeed_error_details",
+      "id": 43,
+      "row_title": "Changefeed",
+      "panel_title": "Changefeed Error Details"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "changefeed_checkpoint_lag",
+      "id": 44,
+      "row_title": "Lag analyze",
+      "panel_title": "Changefeed Checkpoint Lag"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "changefeed_resolved_ts_lag",
+      "id": 45,
+      "row_title": "Lag analyze",
+      "panel_title": "Changefeed Resolved Ts Lag"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "eventfeed_error_m",
+      "id": 46,
+      "row_title": "Lag analyze",
+      "panel_title": "Eventfeed Error / m"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "pd_operator_m",
+      "id": 47,
+      "row_title": "Lag analyze",
+      "panel_title": "PD Operator / m"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tidb_query_duration",
+      "id": 48,
+      "row_title": "Lag analyze",
+      "panel_title": "TiDB Query Duration"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_min_resolved_ts_lag",
+      "id": 49,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Min Resolved Ts Lag"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "sink_write_rows_s",
+      "id": 50,
+      "row_title": "Lag analyze",
+      "panel_title": "Sink Write Rows / s"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "sink_write_duration",
+      "id": 51,
+      "row_title": "Lag analyze",
+      "panel_title": "Sink Write Duration"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_scan_tasks_m",
+      "id": 52,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Scan Tasks / m"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_scan_region_time_m",
+      "id": 53,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Scan Region Time / m"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_leader_change",
+      "id": 54,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Leader Change"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_admin_apply_s",
+      "id": 55,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Admin Apply / s"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_advance_resolved_ts_s",
+      "id": 56,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Advance Resolved Ts / s"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_unresolved_region_count",
+      "id": 57,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Unresolved Region Count"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_check_leader_region_count_percentile",
+      "id": 58,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Check Leader Region Count Percentile"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_advance_resolved_ts_fail_m",
+      "id": 59,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Advance Resolved Ts Fail / m"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_check_leader_duration_percentile",
+      "id": 60,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV Check Leader Duration Percentile"
+    },
+    {
+      "row_key": "lag_analyze",
+      "panel_key": "tikv_cdc_incremental_scan_long_duration_region_count",
+      "id": 61,
+      "row_title": "Lag analyze",
+      "panel_title": "TiKV CDC Incremental Scan Long Duration Region Count"
+    },
+    {
+      "row_key": "coordinator",
+      "panel_key": "changefeed_status",
+      "id": 62,
+      "row_title": "Coordinator",
+      "panel_title": "Changefeed Status"
+    },
+    {
+      "row_key": "coordinator",
+      "panel_key": "coordinator_operator_cost_duration",
+      "id": 63,
+      "row_title": "Coordinator",
+      "panel_title": "Coordinator Operator Cost Duration"
+    },
+    {
+      "row_key": "coordinator",
+      "panel_key": "coordinator_history",
+      "id": 64,
+      "row_title": "Coordinator",
+      "panel_title": "Coordinator History"
+    },
+    {
+      "row_key": "maintainer",
+      "panel_key": "maintainer_checkpoint_lag",
+      "id": 65,
+      "row_title": "Maintainer",
+      "panel_title": "Maintainer Checkpoint Lag"
+    },
+    {
+      "row_key": "maintainer",
+      "panel_key": "maintainer_resolved_ts_lag",
+      "id": 66,
+      "row_title": "Maintainer",
+      "panel_title": "Maintainer Resolved Ts Lag"
+    },
+    {
+      "row_key": "maintainer",
+      "panel_key": "changefeed_maintainer_count",
+      "id": 67,
+      "row_title": "Maintainer",
+      "panel_title": "Changefeed Maintainer Count"
+    },
+    {
+      "row_key": "maintainer",
+      "panel_key": "maintainer_handle_event_duration",
+      "id": 68,
+      "row_title": "Maintainer",
+      "panel_title": "Maintainer Handle Event Duration"
+    },
+    {
+      "row_key": "maintainer",
+      "panel_key": "maintainer_event_channel_length",
+      "id": 69,
+      "row_title": "Maintainer",
+      "panel_title": "Maintainer Event Channel Length"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "input_events_s",
+      "id": 70,
+      "row_title": "Log Puller",
+      "panel_title": "Input Events / s"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "unresolved_region_request_count",
+      "id": 71,
+      "row_title": "Log Puller",
+      "panel_title": "Unresolved Region Request Count "
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "region_request_finish_scan_duration",
+      "id": 72,
+      "row_title": "Log Puller",
+      "panel_title": "Region Request Finish Scan Duration"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "subscribed_region_count",
+      "id": 73,
+      "row_title": "Log Puller",
+      "panel_title": "Subscribed Region Count"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "memory_quota",
+      "id": 74,
+      "row_title": "Log Puller",
+      "panel_title": "Memory Quota"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "resolved_ts_batch_size_regions",
+      "id": 75,
+      "row_title": "Log Puller",
+      "panel_title": "Resolved Ts Batch Size (Regions)"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "region_event_handle_duration",
+      "id": 76,
+      "row_title": "Log Puller",
+      "panel_title": "Region Event Handle Duration"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "region_event_consume_callback_duration",
+      "id": 77,
+      "row_title": "Log Puller",
+      "panel_title": "Region Event Consume Callback Duration"
+    },
+    {
+      "row_key": "log_puller",
+      "panel_key": "dropped_resolve_lock_tasks_s",
+      "id": 78,
+      "row_title": "Log Puller",
+      "panel_title": "Dropped Resolve Lock Tasks / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "resolved_ts_lag",
+      "id": 79,
+      "row_title": "Event Store",
+      "panel_title": "Resolved Ts Lag"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "register_dispatcher_startts_lag",
+      "id": 80,
+      "row_title": "Event Store",
+      "panel_title": "Register Dispatcher StartTs Lag"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "subscriptions_resolved_ts_lag",
+      "id": 81,
+      "row_title": "Event Store",
+      "panel_title": "Subscriptions Resolved Ts Lag"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "subscriptions_data_gc_lag",
+      "id": 82,
+      "row_title": "Event Store",
+      "panel_title": "Subscriptions Data GC Lag"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "input_event_count_s",
+      "id": 83,
+      "row_title": "Event Store",
+      "panel_title": "Input Event Count / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "input_bytes_s",
+      "id": 84,
+      "row_title": "Event Store",
+      "panel_title": "Input Bytes / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_requests_s",
+      "id": 85,
+      "row_title": "Event Store",
+      "panel_title": "Write Requests / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_worker_busy_ratio",
+      "id": 86,
+      "row_title": "Event Store",
+      "panel_title": "Write Worker Busy Ratio"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "compressed_rows_s",
+      "id": 87,
+      "row_title": "Event Store",
+      "panel_title": "Compressed Rows / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_duration",
+      "id": 88,
+      "row_title": "Event Store",
+      "panel_title": "Write Duration"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_queue_duration",
+      "id": 89,
+      "row_title": "Event Store",
+      "panel_title": "Write Queue Duration"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_prepare_duration",
+      "id": 90,
+      "row_title": "Event Store",
+      "panel_title": "Write Prepare Duration"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_batch_size",
+      "id": 91,
+      "row_title": "Event Store",
+      "panel_title": "Write Batch Size"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "write_batch_event_count",
+      "id": 92,
+      "row_title": "Event Store",
+      "panel_title": "Write Batch Event Count"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "data_size_on_disk",
+      "id": 93,
+      "row_title": "Event Store",
+      "panel_title": "Data Size On Disk"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "data_size_in_memory",
+      "id": 94,
+      "row_title": "Event Store",
+      "panel_title": "Data Size In Memory"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "scan_requests_s",
+      "id": 95,
+      "row_title": "Event Store",
+      "panel_title": "Scan Requests / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "scan_bytes_s",
+      "id": 96,
+      "row_title": "Event Store",
+      "panel_title": "Scan Bytes / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "subscription_num",
+      "id": 97,
+      "row_title": "Event Store",
+      "panel_title": "Subscription Num"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "scan_operation_duration",
+      "id": 98,
+      "row_title": "Event Store",
+      "panel_title": "Scan Operation Duration "
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_block_cache_access_s",
+      "id": 99,
+      "row_title": "Event Store",
+      "panel_title": "pebble block cache access /s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_block_cache_hit_ratio",
+      "id": 100,
+      "row_title": "Event Store",
+      "panel_title": "pebble block cache hit ratio"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_compaction_duration_seconds",
+      "id": 101,
+      "row_title": "Event Store",
+      "panel_title": "pebble compaction duration seconds"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_flush_duration_primary",
+      "id": 102,
+      "row_title": "Event Store",
+      "panel_title": "pebble flush duration seconds"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_compaction_bytes",
+      "id": 103,
+      "row_title": "Event Store",
+      "panel_title": "pebble compaction bytes"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_flush_duration_secondary",
+      "id": 104,
+      "row_title": "Event Store",
+      "panel_title": "pebble flush duration seconds"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_write_stall_s",
+      "id": 105,
+      "row_title": "Event Store",
+      "panel_title": "pebble write stall / s"
+    },
+    {
+      "row_key": "event_store",
+      "panel_key": "pebble_level_files",
+      "id": 106,
+      "row_title": "Event Store",
+      "panel_title": "pebble level files"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "resolved_ts_lag",
+      "id": 107,
+      "row_title": "Schema Store",
+      "panel_title": "Resolved Ts Lag"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "register_table_num",
+      "id": 108,
+      "row_title": "Schema Store",
+      "panel_title": "Register Table Num"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "get_table_info_count_s",
+      "id": 109,
+      "row_title": "Schema Store",
+      "panel_title": "Get Table Info Count / s"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "get_table_info_duration",
+      "id": 110,
+      "row_title": "Schema Store",
+      "panel_title": "Get Table Info Duration"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "shared_column_schema_count",
+      "id": 111,
+      "row_title": "Schema Store",
+      "panel_title": "Shared Column Schema Count"
+    },
+    {
+      "row_key": "schema_store",
+      "panel_key": "wait_resolved_ts_duration",
+      "id": 112,
+      "row_title": "Schema Store",
+      "panel_title": "Wait Resolved Ts Duration"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "scan_window_interval",
+      "id": 113,
+      "row_title": "Event Service",
+      "panel_title": "Scan window interval"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "scan_window_base_ts",
+      "id": 114,
+      "row_title": "Event Service",
+      "panel_title": "Scan window base ts"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "scan_duration_heatmap",
+      "id": 115,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scan Duration"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "scan_duration_graph",
+      "id": 116,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scan Duration"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_scanned_entry_count",
+      "id": 117,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scanned Entry Count"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_scanned_transaction_count",
+      "id": 118,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scanned Transaction Count"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_scanned_entry_bytes_s",
+      "id": 119,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scanned Entry Bytes / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_scanned_transaction_bytes_s",
+      "id": 120,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Scanned Transaction Bytes / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_finished_scan_task_count",
+      "id": 121,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Finished Scan Task Count"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_resolved_ts_lag",
+      "id": 122,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Resolved Ts Lag"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_pending_scan_task",
+      "id": 123,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Pending Scan Task"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_dispatcher_status",
+      "id": 124,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Dispatcher Status"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_available_memory",
+      "id": 125,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Available Memory"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "event_service_channel_size",
+      "id": 126,
+      "row_title": "Event Service",
+      "panel_title": "Event Service Channel Size"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "scanned_entry_count_s",
+      "id": 127,
+      "row_title": "Event Service",
+      "panel_title": "Scanned Entry Count / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "reset_dispatcher_s",
+      "id": 128,
+      "row_title": "Event Service",
+      "panel_title": "Reset Dispatcher / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "skip_scan_count_s",
+      "id": 129,
+      "row_title": "Event Service",
+      "panel_title": "Skip Scan Count / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "intterrupt_scan_count_s",
+      "id": 130,
+      "row_title": "Event Service",
+      "panel_title": "Intterrupt Scan Count / s"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "decode_dmlevent_duration",
+      "id": 131,
+      "row_title": "Event Service",
+      "panel_title": "Decode DMLEvent Duration"
+    },
+    {
+      "row_key": "event_service",
+      "panel_key": "eventservice_output_different_dml_event_types_s",
+      "id": 132,
+      "row_title": "Event Service",
+      "panel_title": "EventService Output Different DML Event Types / s"
+    },
+    {
+      "row_key": "message_center",
+      "panel_key": "sent_message_count_per_second",
+      "id": 133,
+      "row_title": "Message Center",
+      "panel_title": "Sent Message Count Per Second"
+    },
+    {
+      "row_key": "message_center",
+      "panel_key": "slow_message_count",
+      "id": 134,
+      "row_title": "Message Center",
+      "panel_title": "Slow Message Count"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "table_dispatcher_manager_count",
+      "id": 135,
+      "row_title": "Dispatcher",
+      "panel_title": "Table Dispatcher Manager Count"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "table_dispatcher_count",
+      "id": 136,
+      "row_title": "Dispatcher",
+      "panel_title": "Table Dispatcher Count"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "table_trigger_dispatcher_count",
+      "id": 137,
+      "row_title": "Dispatcher",
+      "panel_title": "Table Trigger Dispatcher Count"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "create_dispatcher_duration",
+      "id": 138,
+      "row_title": "Dispatcher",
+      "panel_title": "Create Dispatcher Duration"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "dispatcher_request_handle_result",
+      "id": 139,
+      "row_title": "Dispatcher",
+      "panel_title": "Dispatcher Request Handle Result"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "event_collector_registered_dispatcher_count",
+      "id": 140,
+      "row_title": "Dispatcher",
+      "panel_title": "Event Collector Registered Dispatcher Count"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "event_collector_received_resolved_ts_s",
+      "id": 141,
+      "row_title": "Dispatcher",
+      "panel_title": "Event Collector Received Resolved Ts / s"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "event_collector_handle_message_duration",
+      "id": 142,
+      "row_title": "Dispatcher",
+      "panel_title": "Event Collector Handle Message Duration"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "block_statuses_channel_length",
+      "id": 143,
+      "row_title": "Dispatcher",
+      "panel_title": "Block Statuses Channel Length"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "block_status_request_queue_length",
+      "id": 144,
+      "row_title": "Dispatcher",
+      "panel_title": "Block Status Request Queue Length"
+    },
+    {
+      "row_key": "dispatcher",
+      "panel_key": "event_collector_receive_event_lag",
+      "id": 145,
+      "row_title": "Dispatcher",
+      "panel_title": "Event Collector Receive Event Lag"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "ds_input_channel_length",
+      "id": 146,
+      "row_title": "Dynamic Stream",
+      "panel_title": "DS Input Channel Length"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "ds_pending_queue_length",
+      "id": 147,
+      "row_title": "Dynamic Stream",
+      "panel_title": "DS Pending Queue Length"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "p99_batch_count",
+      "id": 148,
+      "row_title": "Dynamic Stream",
+      "panel_title": "P99 - Batch Count"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "avg_batch_count",
+      "id": 149,
+      "row_title": "Dynamic Stream",
+      "panel_title": "Avg - Batch Count"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "p99_batch_bytes",
+      "id": 150,
+      "row_title": "Dynamic Stream",
+      "panel_title": "P99 - Batch Bytes"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "avg_batch_bytes",
+      "id": 151,
+      "row_title": "Dynamic Stream",
+      "panel_title": "Avg - Batch Bytes"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "p99_batch_duration",
+      "id": 152,
+      "row_title": "Dynamic Stream",
+      "panel_title": "P99 - Batch Duration"
+    },
+    {
+      "row_key": "dynamic_stream",
+      "panel_key": "avg_batch_duration",
+      "id": 153,
+      "row_title": "Dynamic Stream",
+      "panel_title": "Avg - Batch Duration"
+    },
+    {
+      "row_key": "sink_general",
+      "panel_key": "output_row_batch_count",
+      "id": 154,
+      "row_title": "Sink - General",
+      "panel_title": "Output Row Batch Count"
+    },
+    {
+      "row_key": "sink_general",
+      "panel_key": "output_row_count_per_second",
+      "id": 155,
+      "row_title": "Sink - General",
+      "panel_title": "Output Row Count (per second)"
+    },
+    {
+      "row_key": "sink_general",
+      "panel_key": "sink_error_count_m",
+      "id": 156,
+      "row_title": "Sink - General",
+      "panel_title": "Sink Error Count / m"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "conflict_detect_duration",
+      "id": 157,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Conflict Detect Duration"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "full_flush_duration",
+      "id": 158,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Full Flush Duration"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "worker_busy_ratio",
+      "id": 159,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Worker Busy Ratio"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "worker_input_rows_s",
+      "id": 160,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Worker Input Rows / s"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "backend_flush_duration",
+      "id": 161,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Backend Flush Duration"
+    },
+    {
+      "row_key": "sink_transaction",
+      "panel_key": "row_affected_count_m",
+      "id": 162,
+      "row_title": "Sink - Transaction Sink",
+      "panel_title": "Row Affected Count / m"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "worker_send_message_duration_percentile",
+      "id": 163,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Worker Send Message Duration Percentile"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_outgoing_bytes",
+      "id": 164,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Outgoing Bytes"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_inflight_requests",
+      "id": 165,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Inflight Requests"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_request_latency",
+      "id": 166,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Request Latency"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_request_rate",
+      "id": 167,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Request Rate"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_records_per_request",
+      "id": 168,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Records Per Request"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "kafka_producer_compression_ratio",
+      "id": 169,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Kafka Producer Compression Ratio"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "encoder_group_input_channel_size",
+      "id": 170,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Encoder Group Input Channel Size"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "encoder_group_output_channel_size",
+      "id": 171,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Encoder Group Output Channel Size"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "worker_batch_duration_percentile",
+      "id": 172,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Worker Batch Duration Percentile"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "worker_batch_size_percentile",
+      "id": 173,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Worker Batch Size Percentile"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "claim_check_send_message_count",
+      "id": 174,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Claim Check Send Message Count"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "claim_check_send_message_duration_percentile",
+      "id": 175,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Claim Check Send Message Duration Percentile"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "worker_send_checkpointts_message_count",
+      "id": 176,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Worker Send CheckpointTs Message Count"
+    },
+    {
+      "row_key": "sink_mq",
+      "panel_key": "worker_encode_and_send_checkpoint_message_duration",
+      "id": 177,
+      "row_title": "Sink - MQ Sink",
+      "panel_title": "Worker Encode and Send Checkpoint Message Duration"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "flush_bytes_s",
+      "id": 178,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Flush Bytes / s"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "worker_busy_ratio",
+      "id": 179,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Worker Busy Ratio"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "flush_duration",
+      "id": 180,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Flush Duration"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "file_count_s",
+      "id": 181,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "File Count / s"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "flush_reason_count_s",
+      "id": 182,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Flush Reason Count / s"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "flush_dml_by_ddl_block_duration",
+      "id": 183,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Flush DML By DDL Block Duration"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_memory_bytes",
+      "id": 184,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Memory Bytes"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_segment_count",
+      "id": 185,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Segment Count"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_disk_bytes",
+      "id": 186,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Disk Bytes"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_rotate_count_s",
+      "id": 187,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Rotate Count / s"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_disk_load_bytes_s",
+      "id": 188,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Disk Load Bytes / s"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "pending_postenqueue_count",
+      "id": 189,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Pending PostEnqueue Count"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_disk_quota_waiters",
+      "id": 190,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Disk Quota Waiters"
+    },
+    {
+      "row_key": "sink_cloud_storage",
+      "panel_key": "spool_disk_quota_wait_duration",
+      "id": 191,
+      "row_title": "Sink - Cloud Storage Sink",
+      "panel_title": "Spool Disk Quota Wait Duration"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "table_replication_state",
+      "id": 192,
+      "row_title": "Scheduler",
+      "panel_title": "Table Replication State"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "schedule_tasks",
+      "id": 193,
+      "row_title": "Scheduler",
+      "panel_title": "Schedule Tasks"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "span_count",
+      "id": 194,
+      "row_title": "Scheduler",
+      "panel_title": "Span Count"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "table_count",
+      "id": 195,
+      "row_title": "Scheduler",
+      "panel_title": "Table Count"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "operator_count",
+      "id": 196,
+      "row_title": "Scheduler",
+      "panel_title": "Operator Count"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "total_operator_count",
+      "id": 197,
+      "row_title": "Scheduler",
+      "panel_title": "Total Operator Count"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "split_span_check_duration",
+      "id": 198,
+      "row_title": "Scheduler",
+      "panel_title": "Split Span Check Duration"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "operator_cost_duration",
+      "id": 199,
+      "row_title": "Scheduler",
+      "panel_title": "Operator Cost Duration"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "slowest_table_checkpoint",
+      "id": 200,
+      "row_title": "Scheduler",
+      "panel_title": "Slowest Table Checkpoint"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "slowest_table_id",
+      "id": 201,
+      "row_title": "Scheduler",
+      "panel_title": "Slowest Table ID"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "slowest_table_replication_state",
+      "id": 202,
+      "row_title": "Scheduler",
+      "panel_title": "Slowest Table Replication State"
+    },
+    {
+      "row_key": "scheduler",
+      "panel_key": "slowest_table_resolved_ts",
+      "id": 203,
+      "row_title": "Scheduler",
+      "panel_title": "Slowest Table Resolved Ts"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "grpc_message_count",
+      "id": 204,
+      "row_title": "TiKV",
+      "panel_title": "gRPC Message Count"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "cdc_network_traffic",
+      "id": 205,
+      "row_title": "TiKV",
+      "panel_title": "CDC Network Traffic"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "cdc_cpu",
+      "id": 206,
+      "row_title": "TiKV",
+      "panel_title": "CDC CPU"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "cdc_memory_quota",
+      "id": 207,
+      "row_title": "TiKV",
+      "panel_title": "CDC Memory Quota"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "captured_region_count",
+      "id": 208,
+      "row_title": "TiKV",
+      "panel_title": "Captured Region Count"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "initial_scan_tasks_status",
+      "id": 209,
+      "row_title": "TiKV",
+      "panel_title": "Initial Scan Tasks Status"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "incremental_scan_duration_percentile",
+      "id": 210,
+      "row_title": "TiKV",
+      "panel_title": "Incremental Scan Duration Percentile"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "initial_scan_duration",
+      "id": 211,
+      "row_title": "TiKV",
+      "panel_title": "Initial Scan Duration"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "incremental_scan_sink_duration_percentile",
+      "id": 212,
+      "row_title": "TiKV",
+      "panel_title": "Incremental Scan Sink Duration Percentile"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "cdc_total_scan_bytes",
+      "id": 213,
+      "row_title": "TiKV",
+      "panel_title": "CDC Total Scan Bytes"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "incremental_scan_speed",
+      "id": 214,
+      "row_title": "TiKV",
+      "panel_title": "Incremental Scan Speed"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "incremental_scan_disk_speed",
+      "id": 215,
+      "row_title": "TiKV",
+      "panel_title": "Incremental Scan Disk Speed"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "min_resolved_ts",
+      "id": 216,
+      "row_title": "TiKV",
+      "panel_title": "Min Resolved Ts"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "resolved_ts_lag_duration_percentile",
+      "id": 217,
+      "row_title": "TiKV",
+      "panel_title": "Resolved Ts Lag Duration Percentile"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "old_value_cache_hit",
+      "id": 218,
+      "row_title": "TiKV",
+      "panel_title": "Old Value Cache Hit"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "min_resolved_region",
+      "id": 219,
+      "row_title": "TiKV",
+      "panel_title": "Min Resolved Region"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "old_value_seek_duration_heatmap",
+      "id": 220,
+      "row_title": "TiKV",
+      "panel_title": "Old Value Seek Duration"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "old_value_cache_size",
+      "id": 221,
+      "row_title": "TiKV",
+      "panel_title": "Old Value Cache Size"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "old_value_seek_duration_graph",
+      "id": 222,
+      "row_title": "TiKV",
+      "panel_title": "Old Value Seek Duration"
+    },
+    {
+      "row_key": "tikv",
+      "panel_key": "old_value_seek_operation",
+      "id": 223,
+      "row_title": "TiKV",
+      "panel_title": "Old Value Seek Operation"
+    },
+    {
+      "row_key": "active_active",
+      "panel_key": "conflict_skip_rows_s",
+      "id": 224,
+      "row_title": "Active Active",
+      "panel_title": "Conflict Skip Rows / s"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_fsync_duration",
+      "id": 225,
+      "row_title": "Redo",
+      "panel_title": "Redo Fsync Duration"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_flushall_duration",
+      "id": 226,
+      "row_title": "Redo",
+      "panel_title": "Redo Flushall Duration"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_write_log_duration",
+      "id": 227,
+      "row_title": "Redo",
+      "panel_title": "Redo Write Log Duration"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_flush_log_duration",
+      "id": 228,
+      "row_title": "Redo",
+      "panel_title": "Redo Flush Log Duration"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_write_rows_s",
+      "id": 229,
+      "row_title": "Redo",
+      "panel_title": "Redo Write Rows / s"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_write_bytes_s",
+      "id": 230,
+      "row_title": "Redo",
+      "panel_title": "Redo Write Bytes / s"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "worker_busy_ratio",
+      "id": 231,
+      "row_title": "Redo",
+      "panel_title": "Worker Busy Ratio"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "memory_quota",
+      "id": 232,
+      "row_title": "Redo",
+      "panel_title": "Memory Quota"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_checkpoint_ts",
+      "id": 233,
+      "row_title": "Redo",
+      "panel_title": "Redo Checkpoint Ts"
+    },
+    {
+      "row_key": "redo",
+      "panel_key": "redo_resolved_ts",
+      "id": 234,
+      "row_title": "Redo",
+      "panel_title": "Redo Resolved Ts"
+    },
+    {
+      "row_key": "runtime",
+      "panel_key": "memory_usage",
+      "id": 235,
+      "row_title": "Runtime $runtime_instance",
+      "panel_title": "Memory Usage"
+    },
+    {
+      "row_key": "runtime",
+      "panel_key": "estimated_live_objects",
+      "id": 236,
+      "row_title": "Runtime $runtime_instance",
+      "panel_title": "Estimated Live Objects"
+    },
+    {
+      "row_key": "runtime",
+      "panel_key": "gc_stw_duration_last_256_gc_cycles",
+      "id": 237,
+      "row_title": "Runtime $runtime_instance",
+      "panel_title": "GC STW Duration (last 256 GC cycles)"
+    },
+    {
+      "row_key": "runtime",
+      "panel_key": "allocator_throughput",
+      "id": 238,
+      "row_title": "Runtime $runtime_instance",
+      "panel_title": "Allocator Throughput"
+    },
+    {
+      "row_key": "ddl",
+      "panel_key": "output_ddl_executing_duration",
+      "id": 239,
+      "row_title": "DDL",
+      "panel_title": "Output DDL Executing Duration"
+    },
+    {
+      "row_key": "ddl",
+      "panel_key": "sink_running_ddl_count",
+      "id": 240,
+      "row_title": "DDL",
+      "panel_title": "Sink Running DDL Count"
+    },
+    {
+      "row_key": "ddl",
+      "panel_key": "maintainer_blocking_ddl_count",
+      "id": 241,
+      "row_title": "DDL",
+      "panel_title": "Maintainer Blocking DDL Count"
+    },
+    {
+      "row_key": "ddl",
+      "panel_key": "sink_ddl_count_m",
+      "id": 242,
+      "row_title": "DDL",
+      "panel_title": "Sink DDL Count / m"
+    },
+    {
+      "row_key": "ddl",
+      "panel_key": "handle_ddl_duration",
+      "id": 243,
+      "row_title": "DDL",
+      "panel_title": "Handle DDL Duration"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_ddl_schema_count",
+      "id": 244,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DDL Schema Count"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_ddl_schema_success",
+      "id": 245,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DDL Schema Success"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_ddl_schema_fail",
+      "id": 246,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DDL Schema Fail"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_dml_schema_count",
+      "id": 247,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DML Schema Count"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_dml_schema_success",
+      "id": 248,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DML Schema Success"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_published_dml_schema_fail",
+      "id": 249,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Published DML Schema Fail"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_client_bytes_published",
+      "id": 250,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Bytes Published"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_client_connections_opened",
+      "id": 251,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Connections Opened"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_client_rpc_count",
+      "id": 252,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client RPC Count"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_client_producer_latency",
+      "id": 253,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Producer Latency"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "pulsar_client_producer_rpc_latency",
+      "id": 254,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Producer RPC Latency"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "producer_pending_messages",
+      "id": 255,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Producer Pending Messages"
+    },
+    {
+      "row_key": "pulsar_sink",
+      "panel_key": "resolved_message_count",
+      "id": 256,
+      "row_title": "Pulsar Sink",
+      "panel_title": "Pulsar Client Producer Pending Messages"
+    }
+  ]
+}

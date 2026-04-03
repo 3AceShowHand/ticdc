@@ -12,9 +12,7 @@ than authoring inputs.
 - Row definitions, one file per row: `metrics/rows/*.py`
 - Templating: `metrics/templating.py`
 - Annotations: `metrics/annotations.py`
-- Dashboard identity metadata: `metrics/dashboard_identity.py`
-- Dashboard compatibility baselines: `metrics/dashboard_baseline.py`
-- Internal immutable spec and renderer: `metrics/dsl/`
+- Dashboard metadata: `metrics/dashboard_meta.py`
 
 Do not manually edit:
 
@@ -24,8 +22,13 @@ Do not manually edit:
 - `metrics/grafana/ticdc_new_arch_next_gen.json.sha256`
 - `metrics/grafana/ticdc_new_arch_with_keyspace_name.json`
 - `metrics/grafana/ticdc_new_arch_with_keyspace_name.json.sha256`
+- `metrics/grafana/panel_ids.json`
 
 Those files are regenerated from Python.
+
+`metrics/grafana/panel_ids.json` is machine-maintained. It preserves Grafana
+panel IDs across panel insertion, deletion, and reordering. Do not edit it by
+hand.
 
 ## Quick Start
 
@@ -46,9 +49,9 @@ The shortest path for a newcomer is:
 Typical edit loop:
 
 ```bash
-uv run python scripts/gen-ticdc-dashboards
-uv run python scripts/check-ticdc-dashboard.py
-uv run python -m unittest discover -s scripts -p 'test_*.py' -v
+uv run python metrics/generate_dashboards.py
+uv run python metrics/check_dashboards.py
+uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
 ```
 
 ## Python Scope
@@ -57,8 +60,8 @@ The Python workflow documented here currently covers only the metrics dashboard
 tooling:
 
 - source modules under `metrics/`
-- dashboard generation and validation scripts under `scripts/`
-- dashboard unit tests under `scripts/tests/`
+- dashboard generation and validation entry points under `metrics/`
+- dashboard unit tests under `metrics/tests/`
 
 It does not manage other Python code in this repository, especially the
 integration-test helpers under `tests/integration_tests/`.
@@ -83,27 +86,27 @@ Helpful `make` shortcuts for this workflow:
 uv sync --group dev
 ```
 
-2. Edit the Python source files under `metrics/` and `metrics/dsl/`.
+2. Edit the Python source files under `metrics/`.
 3. Regenerate dashboard artifacts:
 
 ```bash
-uv run python scripts/gen-ticdc-dashboards
+uv run python metrics/generate_dashboards.py
 ```
 
 4. Validate the generated artifacts and lint the Python source:
 
 ```bash
 uv run ty check
-uv run ruff format --check metrics scripts
-uv run ruff check metrics scripts
-uv run python scripts/check-ticdc-dashboard.py
+uv run ruff format --check metrics
+uv run ruff check metrics
+uv run python metrics/check_dashboards.py
 ./scripts/check-ticdc-dashboard.sh
 ```
 
 5. Run the focused Python test suite:
 
 ```bash
-uv run python -m unittest discover -s scripts -p 'test_*.py' -v
+uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
 ```
 
 6. Before finishing a change, run:
@@ -111,6 +114,76 @@ uv run python -m unittest discover -s scripts -p 'test_*.py' -v
 ```bash
 make check
 ```
+
+## Agent Workflow
+
+When a TiCDC Prometheus metric changes, the recommended workflow is:
+
+1. Change the business metric in the TiCDC code.
+2. Ask an agent to sync the dashboard from the current code diff.
+3. Let the agent modify Python source under `metrics/`, not generated JSON.
+4. Let the agent regenerate dashboards and run validation.
+5. Review the business meaning of the panel change, not the raw JSON.
+
+The agent should be treated as a dashboard sync operator, not as a blind
+dashboard generator.
+
+That means:
+
+- the source of truth for metric semantics is still the TiCDC business code
+- the source of truth for dashboard authoring is still the Python code under
+  `metrics/`
+- generated JSON stays as an artifact
+
+In most cases, the human should only need to tell the agent:
+
+- which subsystem or row the metric belongs to
+- whether it should become a graph, table, or heatmap
+- whether it should extend an existing panel or create a new one
+
+The human should not need to manually:
+
+- write Grafana JSON
+- assign panel IDs
+- update checksums
+- hand-author repetitive PromQL boilerplate
+
+## Agent Prompt Template
+
+Use this prompt when syncing dashboard changes after a metric diff:
+
+```text
+Please inspect the current TiCDC Prometheus metric changes in this workspace
+and sync the Grafana dashboard accordingly.
+
+Requirements:
+1. Read the current code diff first and identify added, removed, renamed, or
+   label-changed metrics.
+2. Update the Python dashboard source under metrics/, not the generated JSON.
+3. Prefer reusing an existing panel. Only create a new panel when the new
+   metric expresses a new observation that does not fit an existing panel.
+4. Keep existing panel IDs stable. Do not let panel reordering, title changes,
+   or query refactors change existing panel IDs.
+5. After editing, run:
+   - python3 metrics/generate_dashboards.py
+   - python3 metrics/check_dashboards.py
+   - ./.venv/bin/ruff format --check metrics
+   - ./.venv/bin/ruff check metrics
+   - ./.venv/bin/ty check
+   - python3 -m unittest discover -s metrics/tests -p 'test_*.py' -v
+6. In the final summary, explain which row and panel were changed, and why.
+```
+
+When the diff alone is not enough, append one short human hint, for example:
+
+```text
+This metric belongs to the Scheduler row.
+It is a histogram and should be shown as p99 plus avg.
+Do not create a new row.
+```
+
+Use one small hint only when needed. Avoid turning dashboard changes into a
+manual specification exercise.
 
 ## Builder API
 
@@ -121,12 +194,11 @@ The recommended editing surface is:
 - `graph(...)`, `heatmap(...)`, `table(...)`
 - `dashboard.add_row(...)`
 - `row.add_panel(...)`, `row.add_panels(...)`
-- `row.add_half_panel(...)`, `row.add_right_half_panel(...)`
+- `row.add_half_panel(...)`
 - `panel.add_query(...)`
 - `panel.add_auto_query(...)`
 - `panel.add_range_query(...)`
 - `panel.add_auto_range_query(...)`
-- `panel.add_instant_query(...)`
 - `graph(...).add_histogram(...)`
 - `table(...).add_label_query(...)`
 
@@ -141,6 +213,30 @@ Use them with one mental model only:
 
 The renderer in `metrics/dsl/render.py` is the only layer that should know the
 final Grafana JSON structure.
+
+Treat `metrics/dsl/` as internal implementation. Most dashboard changes should
+not need edits there.
+
+## Stable Panel IDs
+
+Existing panel IDs are preserved by stable authoring identities:
+
+- row identity: inferred from `build_xxx_row`
+- panel identity: inferred from the local variable name assigned to
+  `graph(...)`, `heatmap(...)`, or `table(...)`
+
+This means:
+
+- changing a visible row title does not need to change panel IDs
+- changing a visible panel title does not need to change panel IDs
+- inserting a new panel only allocates a new larger ID
+- deleting a panel does not renumber any remaining panel
+
+Use explicit `key=` only when you intentionally want to preserve identity across
+an authoring rename, for example when renaming a local panel variable.
+
+For new panels, choose the local variable name carefully. It should be plain
+English and stable, because it becomes the default checked-in panel identity.
 
 ## Recommended Pattern
 
@@ -161,12 +257,11 @@ For dashboard assembly:
 ## Minimal Example
 
 ```python
-from metrics.dsl.specs import RowSpec
 from metrics.builders import graph, row
 from metrics.queries import expr_sum_rate
 
 
-def build_sink_row() -> RowSpec:
+def build_sink_row():
     row_builder = row("Sink")
 
     batch_rows = graph(
@@ -300,18 +395,18 @@ To keep this codebase friendly for future editors:
 For any dashboard change, use this checklist:
 
 ```bash
-uv run python scripts/gen-ticdc-dashboards
+uv run python metrics/generate_dashboards.py
 uv run ty check
-uv run ruff format --check metrics scripts
-uv run ruff check metrics scripts
-uv run python scripts/check-ticdc-dashboard.py
-uv run python -m unittest discover -s scripts -p 'test_*.py' -v
+uv run ruff format --check metrics
+uv run ruff check metrics
+uv run python metrics/check_dashboards.py
+uv run python -m unittest discover -s metrics/tests -p 'test_*.py' -v
 make check
 ```
 
 ## Current Tests
 
-The Python tests under `scripts/tests/` protect three layers:
+The Python tests under `metrics/tests/` protect three layers:
 
 - `test_ticdc_dsl.py`: primitive DSL behavior
 - `test_ticdc_dashboard_rows.py`: semantic row-by-row comparison against the
@@ -326,7 +421,6 @@ This repository keeps `ty` configuration in `pyproject.toml` for the dashboard
 tooling only:
 
 - `metrics/`
-- `scripts/`
 
 That gives editors a project-level Python language server and type-checking
 baseline without pulling unrelated repository Python into the same analysis

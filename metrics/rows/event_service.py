@@ -32,7 +32,7 @@ def build_event_service_row() -> RowSpec:
         ref="B",
     )
 
-    event_service_scan_duration = heatmap(
+    event_service_scan_duration_heatmap = heatmap(
         "Event Service Scan Duration",
         description="",
         unit="s",
@@ -43,7 +43,7 @@ def build_event_service_row() -> RowSpec:
         format="heatmap",
     )
 
-    event_service_scan_duration_2 = (
+    event_service_scan_duration_graph = (
         graph(
             "Event Service Scan Duration",
             description="",
@@ -231,8 +231,8 @@ def build_event_service_row() -> RowSpec:
     )
 
     row_builder.add_panels(
-        event_service_scan_duration,
-        event_service_scan_duration_2,
+        event_service_scan_duration_heatmap,
+        event_service_scan_duration_graph,
     )
 
     row_builder.add_panels(

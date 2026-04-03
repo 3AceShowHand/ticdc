@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Validate generated dashboard artifacts and their adjacent checksum files."""
+
 import hashlib
 import json
 import sys
@@ -31,10 +33,14 @@ DEFAULT_CHECKSUM_FILES = [
 
 
 def discover_repo_root():
+    """Resolve the repository root from this script location."""
+
     return Path(__file__).absolute().parents[1]
 
 
 def resolve_repo_path(repo_root, path):
+    """Resolve CLI paths relative to the repository root by default."""
+
     path = Path(path)
     if path.is_absolute():
         return path
@@ -99,6 +105,8 @@ def check_container(items, parents=()):
 
 
 def check_dashboard_file(path):
+    """Validate one dashboard JSON for duplicate IDs and overlapping panels."""
+
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
@@ -116,6 +124,8 @@ def check_dashboard_file(path):
 
 
 def check_dashboards(repo_root, dashboard_files):
+    """Run structural checks for each dashboard artifact."""
+
     messages = []
     for dashboard_file in dashboard_files:
         path = resolve_repo_path(repo_root, dashboard_file)
@@ -129,6 +139,8 @@ def check_dashboards(repo_root, dashboard_files):
 
 
 def check_checksums(repo_root, checksum_files):
+    """Verify that each `.sha256` file matches the referenced artifact bytes."""
+
     messages = []
     for checksum_file in checksum_files:
         checksum_path = resolve_repo_path(repo_root, checksum_file)
@@ -166,6 +178,8 @@ def check_checksums(repo_root, checksum_files):
 
 
 def main(argv=None):
+    """Validate either the default artifact set or explicit CLI paths."""
+
     repo_root = discover_repo_root()
     argv = list(sys.argv[1:] if argv is None else argv)
 

@@ -3,10 +3,10 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
-"""Thin, author-friendly helpers for PromQL and common target presets.
+"""Thin, author-friendly helpers for PromQL strings.
 
-This layer is intentionally optional. Dashboard authors can keep using the
-primitive `query()` / `graph()` APIs directly when that is clearer.
+This layer is intentionally optional. Row authors can stay on the higher-level
+`metrics.builders` + `metrics.queries` workflow when that reads more clearly.
 """
 
 from __future__ import annotations
@@ -14,9 +14,6 @@ from __future__ import annotations
 import textwrap
 from collections.abc import Sequence
 from dataclasses import dataclass
-
-from .api import query
-from .specs import TargetSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,18 +90,6 @@ def sum_by(expr: str, *labels: str) -> str:
     return aggregate("sum", expr, *labels)
 
 
-def avg_by(expr: str, *labels: str) -> str:
-    return aggregate("avg", expr, *labels)
-
-
-def max_by(expr: str, *labels: str) -> str:
-    return aggregate("max", expr, *labels)
-
-
-def min_by(expr: str, *labels: str) -> str:
-    return aggregate("min", expr, *labels)
-
-
 def rate(expr: str, window: str) -> str:
     return f"rate({expr}[{window}])"
 
@@ -125,98 +110,3 @@ def sum_rate(
     window: str = "1m",
 ) -> str:
     return sum_by(rate(selector(metric, *matchers), window), *by)
-
-
-def histogram_quantile_rate(
-    metric: str,
-    *,
-    quantile: float | str,
-    matchers: Sequence[LabelMatcher] = (),
-    by: Sequence[str] = (),
-    window: str = "1m",
-) -> str:
-    """Build a TiKV-style histogram quantile expression from a base metric."""
-
-    bucket_metric = metric if metric.endswith("_bucket") else f"{metric}_bucket"
-    bucket_by = ("le", *by)
-    bucket_rate = sum_rate(
-        bucket_metric,
-        matchers=matchers,
-        by=bucket_by,
-        window=window,
-    )
-    return f"histogram_quantile({quantile}, {bucket_rate})"
-
-
-def histogram_average_rate(
-    metric: str,
-    *,
-    matchers: Sequence[LabelMatcher] = (),
-    by: Sequence[str] = (),
-    window: str = "1m",
-) -> str:
-    """Build the standard histogram average rate: `sum(rate(sum))/sum(rate(count))`."""
-
-    sum_expr = sum_rate(f"{metric}_sum", matchers=matchers, by=by, window=window)
-    count_expr = sum_rate(f"{metric}_count", matchers=matchers, by=by, window=window)
-    return f"{sum_expr} / {count_expr}"
-
-
-def series_query(
-    expr: str,
-    legend: str | None = None,
-    *,
-    ref: str = "A",
-    hide: bool = False,
-    format: str | None = "time_series",
-    instant: bool | None = None,
-) -> TargetSpec:
-    """Build a target for normal time-series panels."""
-
-    return query(
-        promql(expr),
-        legend=legend,
-        ref=ref,
-        hide=hide,
-        format=format,
-        instant=instant,
-    )
-
-
-def instant_query(
-    expr: str,
-    *,
-    legend: str | None = None,
-    ref: str = "A",
-    hide: bool = False,
-    format: str = "time_series",
-) -> TargetSpec:
-    """Build a query that should be evaluated as an instant vector."""
-
-    return query(
-        promql(expr),
-        legend=legend,
-        ref=ref,
-        hide=hide,
-        format=format,
-        instant=True,
-    )
-
-
-def heatmap_query(
-    expr: str,
-    legend: str = "{{le}}",
-    *,
-    ref: str = "A",
-    hide: bool = False,
-) -> TargetSpec:
-    """Build a heatmap target with Grafana's expected defaults."""
-
-    return query(
-        promql(expr),
-        legend=legend,
-        ref=ref,
-        hide=hide,
-        format="heatmap",
-        instant=False,
-    )

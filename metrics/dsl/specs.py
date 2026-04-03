@@ -36,39 +36,6 @@ class TargetSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class LegendSpec:
-    """Optional legend customization for panels."""
-
-    show: bool = True
-
-
-@dataclass(frozen=True, slots=True)
-class AxisSpec:
-    """Optional y-axis customization for graph-like panels."""
-
-    unit: str = "short"
-    min: ScalarOrNone = None
-    max: ScalarOrNone = None
-    decimals: int | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class ThresholdSpec:
-    """A threshold rule for a panel."""
-
-    value: Scalar
-    color: str
-
-
-@dataclass(frozen=True, slots=True)
-class SeriesOverrideSpec:
-    """Per-series override for classic graph panels."""
-
-    alias: str
-    yaxis: int | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class TransformationSpec:
     """A Grafana table transformation."""
 
@@ -102,12 +69,7 @@ class GraphPanelSpec(PanelSpec):
     min: ScalarOrNone = None
     max: ScalarOrNone = None
     decimals: int | None = None
-    stack: bool = False
     fill: int = 1
-    legend: LegendSpec | None = None
-    axis: AxisSpec | None = None
-    thresholds: list[ThresholdSpec] = field(default_factory=list)
-    overrides: list[SeriesOverrideSpec] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +95,7 @@ class RowSpec:
 
     title: str
     panels: list[PanelSpecLike]
+    key: str | None = None
     collapsed: bool = True
     repeat: str | None = None
 
