@@ -7,23 +7,43 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_max,
+    expr_simple,
+    expr_sum,
+    expr_sum_rate,
+)
 
 
 def build_sink_mq_row() -> RowSpec:
     row_builder = row("Sink - MQ Sink")
 
-    worker_send_message_duration_percentile = graph(
-        "Worker Send Message Duration Percentile",
-        description="MQ worker send messages to Kafka. This metric records the time cost of sending each message.",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_mq_worker_send_message_duration",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+    worker_send_message_duration_percentile = (
+        graph(
+            "Worker Send Message Duration Percentile",
+            description="MQ worker send messages to Kafka. This metric records the time cost of sending each message.",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_mq_worker_send_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_mq_worker_send_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+        )
     )
 
     kafka_outgoing_bytes = graph(
@@ -32,8 +52,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_outgoing_byte_rate{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, broker)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{broker}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_outgoing_byte_rate",
+            by_labels=["namespace", "changefeed", "instance", "broker"],
+            scope="changefeed",
+        )
     )
 
     kafka_inflight_requests = graph(
@@ -42,8 +65,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_in_flight_requests{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, broker)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{broker}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_in_flight_requests",
+            by_labels=["namespace", "changefeed", "instance", "broker"],
+            scope="changefeed",
+        )
     )
 
     kafka_request_latency = graph(
@@ -52,8 +78,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_request_latency{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, broker, type)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{broker}}-{{type}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_request_latency",
+            by_labels=["namespace", "changefeed", "instance", "broker", "type"],
+            scope="changefeed",
+        )
     )
 
     kafka_request_rate = graph(
@@ -62,8 +91,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_request_rate{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, broker)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{broker}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_request_rate",
+            by_labels=["namespace", "changefeed", "instance", "broker"],
+            scope="changefeed",
+        )
     )
 
     kafka_records_per_request = graph(
@@ -72,8 +104,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_records_per_request{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, type)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{type}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_records_per_request",
+            by_labels=["namespace", "changefeed", "instance", "type"],
+            scope="changefeed",
+        )
     )
 
     kafka_producer_compression_ratio = graph(
@@ -82,8 +117,11 @@ def build_sink_mq_row() -> RowSpec:
         unit="percent",
         min="0",
     ).add_query(
-        'sum(ticdc_sink_kafka_producer_compression_ratio{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance, type)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{type}}",
+        expr_sum(
+            "ticdc_sink_kafka_producer_compression_ratio",
+            by_labels=["namespace", "changefeed", "instance", "type"],
+            scope="changefeed",
+        )
     )
 
     encoder_group_input_channel_size = graph(
@@ -91,7 +129,10 @@ def build_sink_mq_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_auto_query(
-        'ticdc_sink_encoder_group_input_chan_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}',
+        expr_simple(
+            "ticdc_sink_encoder_group_input_chan_size",
+            scope="changefeed",
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-{{index}}",
     )
 
@@ -100,36 +141,63 @@ def build_sink_mq_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_auto_query(
-        'ticdc_sink_encoder_group_output_chan_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}',
+        expr_simple(
+            "ticdc_sink_encoder_group_output_chan_size",
+            scope="changefeed",
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}",
     )
 
-    worker_batch_duration_percentile = graph(
-        "Worker Batch Duration Percentile",
-        description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric records batch latency.",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_mq_worker_batch_duration",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+    worker_batch_duration_percentile = (
+        graph(
+            "Worker Batch Duration Percentile",
+            description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric records batch latency.",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_mq_worker_batch_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_mq_worker_batch_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+        )
     )
 
-    worker_batch_size_percentile = graph(
-        "Worker Batch Size Percentile",
-        description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric tracks each batch size.",
-        unit="none",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_mq_worker_batch_size",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+    worker_batch_size_percentile = (
+        graph(
+            "Worker Batch Size Percentile",
+            description="MQ worker batches multiple messages into one when using the batched encode protocol. This metric tracks each batch size.",
+            unit="none",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_mq_worker_batch_size",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_mq_worker_batch_size",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+        )
     )
 
     claim_check_send_message_count = graph(
@@ -137,8 +205,11 @@ def build_sink_mq_row() -> RowSpec:
         description="MQ worker sends large messages to external storage. This metric records the message count.",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_sink_mq_claim_check_send_message_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_mq_claim_check_send_message_count",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
         ref="B",
     )
 
@@ -150,11 +221,21 @@ def build_sink_mq_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_sink_mq_claim_check_send_message_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, namespace, changefeed, instance))',
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_mq_claim_check_send_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
             legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
         )
         .add_auto_query(
-            'sum(rate(ticdc_sink_mq_claim_check_send_message_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[30s])) by (namespace, changefeed, instance) / sum(rate(ticdc_sink_mq_claim_check_send_message_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[30s])) by (namespace, changefeed, instance)',
+            expr_histogram_avg(
+                "ticdc_sink_mq_claim_check_send_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+                window="30s",
+            ),
             legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
         )
     )
@@ -164,22 +245,37 @@ def build_sink_mq_row() -> RowSpec:
         description="the number of message count of checkpointTs message",
         min="0",
     ).add_auto_query(
-        'max(ticdc_sink_mq_checkpoint_ts_message_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        expr_max(
+            "ticdc_sink_mq_checkpoint_ts_message_count",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        )
     )
 
-    worker_encode_and_send_checkpoint_message_duration = graph(
-        "Worker Encode and Send Checkpoint Message Duration",
-        description="This metric records the time cost of encoding and sending checkpointTs messages downstream.",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_mq_checkpoint_ts_message_duration",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
-        average_legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+    worker_encode_and_send_checkpoint_message_duration = (
+        graph(
+            "Worker Encode and Send Checkpoint Message Duration",
+            description="This metric records the time cost of encoding and sending checkpointTs messages downstream.",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_mq_checkpoint_ts_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-P999",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_mq_checkpoint_ts_message_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+        )
     )
 
     row_builder.add_panels(

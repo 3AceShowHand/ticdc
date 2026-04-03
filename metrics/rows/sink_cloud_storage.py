@@ -7,6 +7,14 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_sum,
+    expr_sum_rate,
+    legend_for,
+    regex,
+)
 
 
 def build_sink_cloud_storage_row() -> RowSpec:
@@ -18,8 +26,11 @@ def build_sink_cloud_storage_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_flush_bytes_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_flush_bytes_sum",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
     )
 
     worker_busy_ratio = graph(
@@ -29,19 +40,37 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=1,
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_worker_busy_ratio{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, id, instance) * 100',
-        legend="{{namespace}}-{{changefeed}}-{{id}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_worker_busy_ratio",
+            by_labels=["namespace", "changefeed", "id", "instance"],
+            scope="changefeed",
+        ).op("*", "100"),
     )
 
-    flush_duration = graph(
-        "Flush Duration",
-        description="The time duration of flush data to the external storage system",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_cloud_storage_flush_duration_seconds",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
+    flush_duration = (
+        graph(
+            "Flush Duration",
+            description="The time duration of flush data to the external storage system",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_sink_cloud_storage_flush_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="p99"),
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_cloud_storage_flush_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="avg"),
+        )
     )
 
     file_count_s = graph(
@@ -50,8 +79,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_flush_bytes_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_flush_bytes_count",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     flush_reason_count_s = graph(
@@ -59,19 +95,38 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=1,
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_flush_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, reason, instance)',
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_flush_total",
+            by_labels=["namespace", "changefeed", "reason", "instance"],
+            scope="changefeed",
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-{{reason}}",
     )
 
-    flush_dml_by_ddl_block_duration = graph(
-        "Flush DML By DDL Block Duration",
-        description="The time duration of flush DMLs by the DDL",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
+    flush_dml_by_ddl_block_duration = (
+        graph(
+            "Flush DML By DDL Block Duration",
+            description="The time duration of flush DMLs by the DDL",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="p99"),
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_cloud_storage_ddl_flush_dml_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="avg"),
+        )
     )
 
     spool_memory_bytes = graph(
@@ -79,8 +134,11 @@ def build_sink_cloud_storage_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(ticdc_sink_cloud_storage_spool_memory_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_sink_cloud_storage_spool_memory_bytes",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
     )
 
     spool_segment_count = graph(
@@ -89,8 +147,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(ticdc_sink_cloud_storage_spool_segment_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_sink_cloud_storage_spool_segment_count",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     spool_disk_bytes = graph(
@@ -99,8 +164,11 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=1,
     ).add_auto_query(
-        'sum(ticdc_sink_cloud_storage_spool_disk_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_sink_cloud_storage_spool_disk_bytes",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
     )
 
     spool_rotate_count_s = graph(
@@ -109,8 +177,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=1,
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_rotate_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_rotate_total",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     spool_disk_load_bytes_s = graph(
@@ -120,7 +195,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=1,
     ).add_auto_query(
-        'sum(rate(ticdc_sink_cloud_storage_load_bytes_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance)',
+        expr_sum_rate(
+            "ticdc_sink_cloud_storage_load_bytes_sum",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
     )
 
@@ -130,8 +213,15 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(ticdc_sink_cloud_storage_pending_post_enqueue{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_sink_cloud_storage_pending_post_enqueue",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     spool_disk_quota_waiters = graph(
@@ -140,19 +230,41 @@ def build_sink_cloud_storage_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(ticdc_sink_cloud_storage_spool_disk_quota_waiters{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_sink_cloud_storage_spool_disk_quota_waiters",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
-    spool_disk_quota_wait_duration = graph(
-        "Spool Disk Quota Wait Duration",
-        description="The time duration of waiting for the spool disk quota",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
+    spool_disk_quota_wait_duration = (
+        graph(
+            "Spool Disk Quota Wait Duration",
+            description="The time duration of waiting for the spool disk quota",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="p99"),
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_cloud_storage_spool_disk_quota_wait_duration_seconds",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend=legend_for("namespace", "changefeed", "instance", suffix="avg"),
+        )
     )
 
     row_builder.add_panels(

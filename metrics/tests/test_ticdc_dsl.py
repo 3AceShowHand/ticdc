@@ -83,17 +83,34 @@ class DSLPrimitiveTest(unittest.TestCase):
             [item["id"] for item in rendered_table["transformations"]],
         )
 
-    def test_graph_builder_supports_histogram_shortcuts(self):
+    def test_graph_builder_uses_explicit_histogram_queries(self):
         builders = require_module(self, "metrics.builders")
+        queries = require_module(self, "metrics.queries")
         render = require_module(self, "metrics.dsl.render")
 
-        panel = builders.graph("Flush Duration", unit="s", min="0").add_histogram(
-            "ticdc_sink_cloud_storage_flush_duration_seconds",
-            by_labels=["namespace", "changefeed", "instance"],
-            scope="changefeed",
+        panel = (
+            builders.graph("Flush Duration", unit="s", min="0")
+            .add_auto_query(
+                queries.expr_histogram_quantile(
+                    0.99,
+                    "ticdc_sink_cloud_storage_flush_duration_seconds",
+                    by_labels=["namespace", "changefeed", "instance"],
+                    scope="changefeed",
+                ),
+                legend="{{namespace}}-{{changefeed}}-{{instance}}-p99",
+            )
+            .add_auto_query(
+                queries.expr_histogram_avg(
+                    "ticdc_sink_cloud_storage_flush_duration_seconds",
+                    by_labels=["namespace", "changefeed", "instance"],
+                    scope="changefeed",
+                ),
+                legend="{{namespace}}-{{changefeed}}-{{instance}}-avg",
+            )
         )
         rendered = render.render_panel(panel.build(), panel_id=1, x=0, y=0)
 
+        self.assertFalse(hasattr(builders.graph("Flush Duration"), "add_histogram"))
         self.assertEqual(2, len(rendered["targets"]))
         self.assertEqual(
             "{{namespace}}-{{changefeed}}-{{instance}}-p99",

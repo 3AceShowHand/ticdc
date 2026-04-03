@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_histogram_quantile, expr_simple, expr_sum_rate, legend_for
 
 
 def build_schema_store_row() -> RowSpec:
@@ -17,7 +18,7 @@ def build_schema_store_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_auto_query(
-        'ticdc_schema_store_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_schema_store_resolved_ts_lag", scope="instance"),
         legend="{{instance}}-resolvedts",
     )
 
@@ -25,7 +26,7 @@ def build_schema_store_row() -> RowSpec:
         "Register Table Num",
         min="0",
     ).add_auto_query(
-        'ticdc_schema_store_register_table_num{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_schema_store_register_table_num", scope="instance"),
         legend="{{instance}}",
     )
 
@@ -33,16 +34,22 @@ def build_schema_store_row() -> RowSpec:
         "Get Table Info Count / s",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_schema_store_get_table_info_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_schema_store_get_table_info_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     get_table_info_duration = heatmap(
         "Get Table Info Duration",
         unit="s",
     ).add_range_query(
-        'sum(rate(ticdc_schema_store_get_table_info_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_schema_store_get_table_info_duration_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 
@@ -51,7 +58,7 @@ def build_schema_store_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'ticdc_common_shared_column_schema_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_common_shared_column_schema_count", scope="instance"),
         legend="{{instance}}",
     )
 
@@ -63,16 +70,31 @@ def build_schema_store_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.8, sum(rate(ticdc_schema_store_wait_resolved_ts_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p80",
+            expr_histogram_quantile(
+                0.8,
+                "ticdc_schema_store_wait_resolved_ts_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p80"),
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_schema_store_wait_resolved_ts_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p95",
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_schema_store_wait_resolved_ts_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p95"),
         )
         .add_auto_query(
-            'histogram_quantile(1.0, sum(rate(ticdc_schema_store_wait_resolved_ts_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-max",
+            expr_histogram_quantile(
+                1.0,
+                "ticdc_schema_store_wait_resolved_ts_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="max"),
         )
     )
 

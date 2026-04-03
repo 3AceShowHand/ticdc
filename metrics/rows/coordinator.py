@@ -7,6 +7,12 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_sum,
+    expr_sum_rate,
+)
 
 
 def build_coordinator_row() -> RowSpec:
@@ -17,21 +23,36 @@ def build_coordinator_row() -> RowSpec:
         description="The number of changefeed in different status\n\n0: ReplicationSetStateUnknown means the replication state is unknown, it should not happen.\n\n1: ReplicationSetStateAbsent means there is no one replicates or prepares it.\n\n2: ReplicationSetStatePrepare means it needs to add a secondary.\n\n3: ReplicationSetStateCommit means it needs to promote secondary to primary.\n\n4: ReplicationSetStateReplicating means there is exactly one capture that is replicating the table.\n\n5: ReplicationSetStateRemoving means all captures need to stop replication eventually.\n\n",
         min="0",
     ).add_query(
-        'sum(ticdc_coordinator_changefeed_state{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, state)',
-        legend="{{namespace}}-{{changefeed}}-{{state}}",
+        expr_sum(
+            "ticdc_coordinator_changefeed_state",
+            by_labels=["namespace", "changefeed", "state"],
+            scope="changefeed",
+        ),
     )
 
-    coordinator_operator_cost_duration = graph(
-        "Coordinator Operator Cost Duration",
-        description="duration for each operator for changefeed",
-        unit="s",
-    ).add_histogram(
-        "ticdc_coordinator_finish_operators_duration_seconds",
-        by_labels=["namespace", "changefeed", "mode"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
+    coordinator_operator_cost_duration = (
+        graph(
+            "Coordinator Operator Cost Duration",
+            description="duration for each operator for changefeed",
+            unit="s",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_coordinator_finish_operators_duration_seconds",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_coordinator_finish_operators_duration_seconds",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
+        )
     )
 
     coordinator_history = graph(
@@ -41,8 +62,12 @@ def build_coordinator_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(rate(ticdc_owner_ownership_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[240s])) by (instance) > BOOL 0.5',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_owner_ownership_counter",
+            by_labels=["instance"],
+            scope="instance",
+            window="240s",
+        ).op("> BOOL", "0.5"),
     )
 
     row_builder.add_panels(

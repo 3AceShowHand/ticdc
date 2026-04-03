@@ -7,10 +7,17 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import Expr, eq, expr_simple, not_regex
 
 
 def build_runtime_row() -> RowSpec:
     row_builder = row("Runtime $runtime_instance")
+    next_gc_bytes = expr_simple("go_memstats_next_gc_bytes", scope="runtime_instance")
+    heap_alloc_bytes = expr_simple("go_memstats_heap_alloc_bytes", scope="runtime_instance")
+    gc_percent = expr_simple("ticdc_server_go_gc", scope="runtime_instance").op("/", "100")
+    estimated_inuse = next_gc_bytes.op("/", f"(1 + {gc_percent})")
+    last_gc_time = expr_simple("go_memstats_last_gc_time_seconds", scope="runtime_instance")
+    alloc_total = expr_simple("go_memstats_alloc_bytes_total", scope="runtime_instance")
 
     memory_usage = (
         graph(
@@ -20,33 +27,44 @@ def build_runtime_row() -> RowSpec:
             min="0",
         )
         .add_query(
-            'process_resident_memory_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}',
+            expr_simple("process_resident_memory_bytes", scope="runtime_instance"),
             legend="alloc-from-os",
         )
         .add_query(
-            'go_memstats_next_gc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} / (1 + ticdc_server_go_gc{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} / 100)',
+            estimated_inuse,
             legend="estimate-inuse",
             ref="H",
         )
         .add_query(
-            'go_memstats_heap_alloc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} - go_memstats_next_gc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} / (1 + ticdc_server_go_gc{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} / 100)',
+            heap_alloc_bytes.op("-", estimated_inuse),
             legend="estimate-garbage",
             ref="C",
         )
         .add_query(
-            'go_memstats_heap_idle_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} - go_memstats_heap_released_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_heap_inuse_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} - go_memstats_heap_alloc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}',
+            expr_simple("go_memstats_heap_idle_bytes", scope="runtime_instance")
+            .op("-", expr_simple("go_memstats_heap_released_bytes", scope="runtime_instance"))
+            .op("+", expr_simple("go_memstats_heap_inuse_bytes", scope="runtime_instance"))
+            .op("-", heap_alloc_bytes),
             legend="reserved-by-go",
         )
         .add_query(
-            'go_memstats_stack_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_mspan_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_mcache_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_buck_hash_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_gc_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} + go_memstats_other_sys_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}',
+            expr_simple("go_memstats_stack_sys_bytes", scope="runtime_instance")
+            .op("+", expr_simple("go_memstats_mspan_sys_bytes", scope="runtime_instance"))
+            .op("+", expr_simple("go_memstats_mcache_sys_bytes", scope="runtime_instance"))
+            .op("+", expr_simple("go_memstats_buck_hash_sys_bytes", scope="runtime_instance"))
+            .op("+", expr_simple("go_memstats_gc_sys_bytes", scope="runtime_instance"))
+            .op("+", expr_simple("go_memstats_other_sys_bytes", scope="runtime_instance")),
             legend="used-by-go",
         )
         .add_query(
-            'go_memstats_next_gc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}',
+            next_gc_bytes,
             legend="gc-threshold",
         )
         .add_query(
-            '(clamp_max(idelta(go_memstats_last_gc_time_seconds{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}[1m]), 1) * go_memstats_next_gc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}) > 0',
+            Expr(
+                f"(clamp_max({last_gc_time.call('idelta', range_selector='1m')}, 1) * "
+                f"{next_gc_bytes}) > 0"
+            ),
             legend="gc",
         )
     )
@@ -56,7 +74,7 @@ def build_runtime_row() -> RowSpec:
         description="Count of live objects.",
         min="0",
     ).add_query(
-        'go_memstats_heap_objects{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}',
+        expr_simple("go_memstats_heap_objects", scope="runtime_instance"),
         legend="objects",
     )
 
@@ -68,15 +86,27 @@ def build_runtime_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'go_gc_duration_seconds{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance", quantile="0"}',
+            expr_simple(
+                "go_gc_duration_seconds",
+                scope="runtime_instance",
+                selectors=[eq("quantile", "0")],
+            ),
             legend="min",
         )
         .add_range_query(
-            'go_gc_duration_seconds{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance", quantile!~"0|1"}',
+            expr_simple(
+                "go_gc_duration_seconds",
+                scope="runtime_instance",
+                selectors=[not_regex("quantile", "0|1")],
+            ),
             legend="{{quantile}}",
         )
         .add_range_query(
-            'go_gc_duration_seconds{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance", quantile="1"}',
+            expr_simple(
+                "go_gc_duration_seconds",
+                scope="runtime_instance",
+                selectors=[eq("quantile", "1")],
+            ),
             legend="max",
         )
     )
@@ -88,19 +118,28 @@ def build_runtime_row() -> RowSpec:
             unit="Bps",
         )
         .add_query(
-            'irate(go_memstats_alloc_bytes_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}[30s])',
+            alloc_total.call("irate", range_selector="30s"),
             legend="alloc",
         )
         .add_query(
-            'irate((go_memstats_alloc_bytes_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"} - go_memstats_heap_alloc_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"})[30s:])',
+            Expr(f"({alloc_total} - {heap_alloc_bytes})").call(
+                "irate",
+                range_selector="30s:",
+            ),
             legend="sweep",
         )
         .add_query(
-            'irate(go_memstats_mallocs_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}[30s])',
+            expr_simple("go_memstats_mallocs_total", scope="runtime_instance").call(
+                "irate",
+                range_selector="30s",
+            ),
             legend="alloc-ops",
         )
         .add_query(
-            'irate(go_memstats_frees_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$runtime_instance"}[30s])',
+            expr_simple("go_memstats_frees_total", scope="runtime_instance").call(
+                "irate",
+                range_selector="30s",
+            ),
             legend="swepp-ops",
         )
     )

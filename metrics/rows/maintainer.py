@@ -7,6 +7,13 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_max,
+    expr_sum,
+    legend_for,
+)
 
 
 def build_maintainer_row() -> RowSpec:
@@ -18,8 +25,11 @@ def build_maintainer_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_maintainer_checkpoint_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_maintainer_checkpoint_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     maintainer_resolved_ts_lag = graph(
@@ -28,8 +38,12 @@ def build_maintainer_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_maintainer_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}-resolvedts",
+        expr_max(
+            "ticdc_maintainer_resolved_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
+        legend=legend_for("namespace", "changefeed", suffix="resolvedts"),
     )
 
     changefeed_maintainer_count = graph(
@@ -39,23 +53,38 @@ def build_maintainer_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_changefeed_maintainer_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum(
+            "ticdc_changefeed_maintainer_counter",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
         ref="B",
     )
 
-    maintainer_handle_event_duration = graph(
-        "Maintainer Handle Event Duration",
-        unit="s",
-        min="0",
-        decimals=0,
-    ).add_histogram(
-        "ticdc_maintainer_handle_event_duration",
-        by_labels=["namespace", "changefeed"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}",
+    maintainer_handle_event_duration = (
+        graph(
+            "Maintainer Handle Event Duration",
+            unit="s",
+            min="0",
+            decimals=0,
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_maintainer_handle_event_duration",
+                by_labels=["namespace", "changefeed"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_maintainer_handle_event_duration",
+                by_labels=["namespace", "changefeed"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}",
+        )
     )
 
     maintainer_event_channel_length = graph(
@@ -64,8 +93,11 @@ def build_maintainer_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'max(ticdc_maintainer_event_ch_len{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_maintainer_event_ch_len",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     row_builder.add_panels(

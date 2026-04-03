@@ -7,6 +7,16 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    eq,
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_max,
+    expr_sum,
+    legend_for,
+    neq,
+    regex,
+)
 
 
 def build_scheduler_row() -> RowSpec:
@@ -17,8 +27,11 @@ def build_scheduler_row() -> RowSpec:
         description="The total number of tables in different replication states.\n\n0: ReplicationSetStateUnknown means the replication state is unknown, it should not happen.\n\n1: ReplicationSetStateAbsent means there is no one replicates or prepares it.\n\n2: ReplicationSetStatePrepare means it needs to add a secondary.\n\n3: ReplicationSetStateCommit means it needs to promote secondary to primary.\n\n4: ReplicationSetStateReplicating means there is exactly one capture that is replicating the table.\n\n5: ReplicationSetStateRemoving means all captures need to stop replication eventually.\n\n",
         min="0",
     ).add_query(
-        'sum(ticdc_scheduler_table_replication_state{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, state)',
-        legend="{{namespace}}-{{changefeed}}-{{state}}",
+        expr_sum(
+            "ticdc_scheduler_table_replication_state",
+            by_labels=["namespace", "changefeed", "state"],
+            scope="changefeed",
+        ),
     )
 
     schedule_tasks = graph(
@@ -27,24 +40,33 @@ def build_scheduler_row() -> RowSpec:
         unit="none",
         min="0",
     ).add_query(
-        'sum(ticdc_scheduler_task{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, scheduler, task, mode)',
-        legend="{{namespace}}-{{changefeed}}-{{scheduler}}-{{task}}-{{mode}}",
+        expr_sum(
+            "ticdc_scheduler_task",
+            by_labels=["namespace", "changefeed", "scheduler", "task", "mode"],
+            scope="changefeed",
+        ),
     )
 
     span_count = graph(
         "Span Count",
         description="The total number of spans",
     ).add_query(
-        'sum(ticdc_scheduler_span_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, mode)',
-        legend="{{namespace}}-{{changefeed}}-{{mode}}",
+        expr_sum(
+            "ticdc_scheduler_span_count",
+            by_labels=["namespace", "changefeed", "mode"],
+            scope="changefeed",
+        ),
     )
 
     table_count = graph(
         "Table Count",
         description="The total number of tables",
     ).add_query(
-        'sum(ticdc_scheduler_table_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, mode)',
-        legend="{{namespace}}-{{changefeed}}-{{mode}}",
+        expr_sum(
+            "ticdc_scheduler_table_count",
+            by_labels=["namespace", "changefeed", "mode"],
+            scope="changefeed",
+        ),
     )
 
     operator_count = (
@@ -53,20 +75,40 @@ def build_scheduler_row() -> RowSpec:
             description="The number of current operator count",
         )
         .add_query(
-            'sum(ticdc_maintainer_created_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed", type="add"}) by (namespace, changefeed, mode)',
-            legend="add-operator-{{namespace}}-{{changefeed}}-{{mode}}",
+            expr_sum(
+                "ticdc_maintainer_created_count",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+                selectors=[eq("type", "add")],
+            ),
+            legend=legend_for("namespace", "changefeed", "mode", prefix="add-operator"),
         )
         .add_auto_query(
-            'sum(ticdc_maintainer_created_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed", type="move"}) by (namespace, changefeed, mode)',
-            legend="move-operator-{{namespace}}-{{changefeed}}-{{mode}}",
+            expr_sum(
+                "ticdc_maintainer_created_count",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+                selectors=[eq("type", "move")],
+            ),
+            legend=legend_for("namespace", "changefeed", "mode", prefix="move-operator"),
         )
         .add_auto_query(
-            'sum(ticdc_maintainer_created_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed", type="split"}) by (namespace, changefeed, mode)',
-            legend="split-operator-{{namespace}}-{{changefeed}}-{{mode}}",
+            expr_sum(
+                "ticdc_maintainer_created_count",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+                selectors=[eq("type", "split")],
+            ),
+            legend=legend_for("namespace", "changefeed", "mode", prefix="split-operator"),
         )
         .add_auto_query(
-            'sum(ticdc_maintainer_created_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed", type="merge"}) by (namespace, changefeed, mode)',
-            legend="merge-operator-{{namespace}}-{{changefeed}}-{{mode}}",
+            expr_sum(
+                "ticdc_maintainer_created_count",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+                selectors=[eq("type", "merge")],
+            ),
+            legend=legend_for("namespace", "changefeed", "mode", prefix="merge-operator"),
         )
     )
 
@@ -74,34 +116,63 @@ def build_scheduler_row() -> RowSpec:
         "Total Operator Count",
         description="The number of total operator count ",
     ).add_query(
-        'sum(ticdc_maintainer_total_operator_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance", type!="occupy"}) by (namespace, changefeed, type, mode)',
-        legend="{{type}}-{{namespace}}-{{changefeed}}-{{mode}}",
+        expr_sum(
+            "ticdc_maintainer_total_operator_count",
+            by_labels=["namespace", "changefeed", "type", "mode"],
+            scope="changefeed",
+            selectors=[neq("type", "occupy")],
+        ),
+        legend=legend_for("type", "namespace", "changefeed", "mode"),
     )
 
-    split_span_check_duration = graph(
-        "Split Span Check Duration",
-        description="duration for split span do once check",
-        unit="s",
-    ).add_histogram(
-        "ticdc_maintainer_split_span_check_duration",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+    split_span_check_duration = (
+        graph(
+            "Split Span Check Duration",
+            description="duration for split span do once check",
+            unit="s",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_maintainer_split_span_check_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_maintainer_split_span_check_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
     )
 
-    operator_cost_duration = graph(
-        "Operator Cost Duration",
-        description="duration for each operator",
-        unit="s",
-    ).add_histogram(
-        "ticdc_maintainer_finish_operators_duration_seconds",
-        by_labels=["namespace", "changefeed", "mode"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
+    operator_cost_duration = (
+        graph(
+            "Operator Cost Duration",
+            description="duration for each operator",
+            unit="s",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_maintainer_finish_operators_duration_seconds",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}-{{mode}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_maintainer_finish_operators_duration_seconds",
+                by_labels=["namespace", "changefeed", "mode"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}-{{mode}}",
+        )
     )
 
     slowest_table_checkpoint = (
@@ -111,12 +182,19 @@ def build_scheduler_row() -> RowSpec:
             unit="dateTimeAsIso",
         )
         .add_query(
-            'max(pd_cluster_tso{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster"})',
+            expr_max("pd_cluster_tso", scope="cluster"),
             legend="approximate current time (s)",
         )
         .add_query(
-            'max(ticdc_scheduler_slow_table_checkpoint_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}",
+            expr_max(
+                "ticdc_scheduler_slow_table_checkpoint_ts",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
         )
     )
 
@@ -127,8 +205,11 @@ def build_scheduler_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_scheduler_slow_table_id{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_sum(
+            "ticdc_scheduler_slow_table_id",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     slowest_table_replication_state = graph(
@@ -138,8 +219,11 @@ def build_scheduler_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_scheduler_slow_table_replication_state{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_sum(
+            "ticdc_scheduler_slow_table_replication_state",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     slowest_table_resolved_ts = (
@@ -149,12 +233,19 @@ def build_scheduler_row() -> RowSpec:
             unit="dateTimeAsIso",
         )
         .add_query(
-            'max(pd_cluster_tso{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster"})',
+            expr_max("pd_cluster_tso", scope="cluster"),
             legend="approximate current time (s)",
         )
         .add_query(
-            'max(ticdc_scheduler_slow_table_resolved_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}",
+            expr_max(
+                "ticdc_scheduler_slow_table_resolved_ts",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
         )
     )
 

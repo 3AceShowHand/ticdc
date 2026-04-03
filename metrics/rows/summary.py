@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_max, expr_sum, expr_sum_rate, regex
 
 
 def build_summary_row() -> RowSpec:
@@ -18,8 +19,15 @@ def build_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_owner_checkpoint_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_owner_checkpoint_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     changefeed_resolved_ts_lag = graph(
@@ -28,8 +36,15 @@ def build_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_owner_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_owner_resolved_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     upstream_write_bytes_s = graph(
@@ -38,7 +53,12 @@ def build_summary_row() -> RowSpec:
         unit="binBps",
         min="0",
     ).add_auto_query(
-        'sum(rate(tidb_tikvclient_txn_write_size_bytes_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", scope=~"general"}[30s]))',
+        expr_sum_rate(
+            "tidb_tikvclient_txn_write_size_bytes_sum",
+            scope="cluster",
+            selectors=[regex("scope", "general")],
+            window="30s",
+        ),
         legend="sum",
     )
 
@@ -48,8 +68,11 @@ def build_summary_row() -> RowSpec:
         unit="binBps",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_write_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_write_bytes",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     sink_event_row_count_s = graph(
@@ -58,8 +81,11 @@ def build_summary_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(rate(ticdc_sink_dml_event_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (namespace, changefeed, instance)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}",
+        expr_sum_rate(
+            "ticdc_sink_dml_event_count",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
     )
 
     sink_write_bytes_s = (
@@ -69,11 +95,19 @@ def build_summary_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_sink_write_bytes_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (instance, type, changefeed)',
+            expr_sum_rate(
+                "ticdc_sink_write_bytes_total",
+                by_labels=["instance", "type", "changefeed"],
+                scope="changefeed",
+            ),
             legend="{{instance}}-{{changefeed}}-{{type}}",
         )
         .add_auto_query(
-            'avg_over_time(sum(rate(ticdc_sink_write_bytes_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed", instance=~"$ticdc_instance"}[1m])) by (instance, type, changefeed)[1m:])',
+            expr_sum_rate(
+                "ticdc_sink_write_bytes_total",
+                by_labels=["instance", "type", "changefeed"],
+                scope="changefeed",
+            ).call("avg_over_time", range_selector="1m:"),
             legend="{{instance}}-{{changefeed}}-AVG",
             hide=True,
         )
@@ -84,8 +118,15 @@ def build_summary_row() -> RowSpec:
         description="The status of each changefeed.\n\n0: Normal\n\n1: Pending\n\n2: Failed\n\n3: Stopped\n\n4: Finished\n\n5: Removed\n\n6: Warning\n\n7: Uninitialized\n\n-1: Unknown",
         min="0",
     ).add_range_query(
-        'max(ticdc_owner_status{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_owner_status",
+            by_labels=["namespace", "changefeed"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     table_dispatcher_count = graph(
@@ -94,8 +135,11 @@ def build_summary_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_dispatchermanager_table_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance, changefeed, event_type)',
-        legend="{{instance}}-{{changefeed}}-{{event_type}}",
+        expr_sum(
+            "ticdc_dispatchermanager_table_dispatcher_count",
+            by_labels=["instance", "changefeed", "event_type"],
+            scope="changefeed",
+        ),
     )
 
     memory_quota = graph(
@@ -104,7 +148,16 @@ def build_summary_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(ticdc_dynamic_stream_memory_usage{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", area=~"$changefeed", instance=~"$ticdc_instance", module=~"event-collector"}) by (namespace, area, instance, module, type)',
+        expr_sum(
+            "ticdc_dynamic_stream_memory_usage",
+            by_labels=["namespace", "area", "instance", "module", "type"],
+            scope="instance",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("area", "$changefeed"),
+                regex("module", "event-collector"),
+            ],
+        ),
         legend="{{namespace}}-{{area}}-{{instance}}-{{module}}-{{type}}",
     )
 
@@ -112,8 +165,11 @@ def build_summary_row() -> RowSpec:
         "Table Count",
         description="The total number of tables",
     ).add_query(
-        'sum(ticdc_scheduler_table_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, mode)',
-        legend="{{namespace}}-{{changefeed}}-{{mode}}",
+        expr_sum(
+            "ticdc_scheduler_table_count",
+            by_labels=["namespace", "changefeed", "mode"],
+            scope="changefeed",
+        ),
     )
 
     row_builder.add_panels(

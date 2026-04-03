@@ -7,6 +7,17 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    eq,
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_max,
+    expr_simple,
+    expr_sum,
+    expr_sum_rate,
+    legend_for,
+    regex,
+)
 
 
 def build_event_service_row() -> RowSpec:
@@ -18,7 +29,11 @@ def build_event_service_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_event_service_scan_window_interval{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
+        expr_max(
+            "ticdc_event_service_scan_window_interval",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="changefeed",
+        ),
         legend="{{instance}}{{namespace}}-{{changefeed}}",
     )
 
@@ -27,7 +42,15 @@ def build_event_service_row() -> RowSpec:
         description="",
         unit="none",
     ).add_query(
-        'max(ticdc_event_service_scan_window_base_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed, instance)',
+        expr_max(
+            "ticdc_event_service_scan_window_base_ts",
+            by_labels=["namespace", "changefeed", "instance"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
         legend="{{instance}}{{namespace}}-{{changefeed}}",
         ref="B",
     )
@@ -38,8 +61,11 @@ def build_event_service_row() -> RowSpec:
         unit="s",
         key="scan_duration_heatmap",
     ).add_range_query(
-        'sum(rate(ticdc_event_service_scan_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_event_service_scan_duration_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 
@@ -52,12 +78,21 @@ def build_event_service_row() -> RowSpec:
             key="scan_duration_graph",
         )
         .add_range_query(
-            'sum(rate(ticdc_event_service_scan_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_event_service_scan_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_event_service_scan_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
         .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_event_service_scan_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p999",
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_event_service_scan_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p999"),
         )
     )
 
@@ -65,16 +100,22 @@ def build_event_service_row() -> RowSpec:
         "Event Service Scanned Entry Count",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_scanned_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_scanned_count_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     event_service_scanned_transaction_count = graph(
         "Event Service Scanned Transaction Count",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_scanned_txn_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_scanned_txn_count_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     event_service_scanned_entry_bytes_s = (
@@ -84,12 +125,21 @@ def build_event_service_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_event_store_scan_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type="scanned"}[1m])) by (instance)',
-            legend="{{instance}}",
+            expr_sum_rate(
+                "ticdc_event_store_scan_bytes",
+                by_labels=["instance"],
+                scope="instance",
+                selectors=[eq("type", "scanned")],
+            ),
         )
         .add_auto_query(
-            'sum(rate(ticdc_event_store_scan_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type="skipped"}[1m])) by (instance)',
-            legend="{{instance}}-skipped",
+            expr_sum_rate(
+                "ticdc_event_store_scan_bytes",
+                by_labels=["instance"],
+                scope="instance",
+                selectors=[eq("type", "skipped")],
+            ),
+            legend=legend_for("instance", suffix="skipped"),
         )
     )
 
@@ -98,16 +148,23 @@ def build_event_service_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_scanned_dml_size_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_scanned_dml_size_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     event_service_finished_scan_task_count = graph(
         "Event Service Finished Scan Task Count",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_scan_task_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="finished-scan-task-{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_scan_task_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
+        legend=legend_for("instance", prefix="finished-scan-task"),
     )
 
     event_service_resolved_ts_lag = graph(
@@ -116,15 +173,24 @@ def build_event_service_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'sum(ticdc_event_service_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance, type)',
-        legend="{{instance}}-{{type}}-resolvedts",
+        expr_sum(
+            "ticdc_event_service_resolved_ts_lag",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
+        legend=legend_for("instance", "type", suffix="resolvedts"),
     )
 
     event_service_pending_scan_task = graph(
         "Event Service Pending Scan Task",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_pending_scan_task_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", instance=~"$ticdc_instance"}[1m])) by (namespace, instance)',
+        expr_sum_rate(
+            "ticdc_event_service_pending_scan_task_count",
+            by_labels=["namespace", "instance"],
+            scope="instance",
+            selectors=[regex("namespace", "$namespace")],
+        ),
         legend="pending-task-{{instance}}",
     )
 
@@ -132,7 +198,11 @@ def build_event_service_row() -> RowSpec:
         "Event Service Dispatcher Status",
         min="0",
     ).add_auto_query(
-        'ticdc_event_service_dispatcher_status_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", instance=~"$ticdc_instance"}',
+        expr_simple(
+            "ticdc_event_service_dispatcher_status_count",
+            scope="instance",
+            selectors=[regex("namespace", "$namespace")],
+        ),
         legend="{{instance}}-dispatcherStatus-{{status}}",
         ref="B",
     )
@@ -143,8 +213,11 @@ def build_event_service_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(ticdc_event_service_available_memory_quota{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance, changefeed)',
-        legend="{{instance}}-{{changefeed}}",
+        expr_sum(
+            "ticdc_event_service_available_memory_quota",
+            by_labels=["instance", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     event_service_channel_size = graph(
@@ -153,8 +226,12 @@ def build_event_service_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_channel_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum_rate(
+            "ticdc_event_service_channel_size",
+            by_labels=["instance", "type"],
+            scope="instance",
+            selectors=[regex("namespace", "$namespace")],
+        ),
     )
 
     scanned_entry_count_s = graph(
@@ -162,8 +239,11 @@ def build_event_service_row() -> RowSpec:
         description="The number of entries scanned by event store.",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_scanned_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_scanned_count_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     reset_dispatcher_s = graph(
@@ -172,8 +252,11 @@ def build_event_service_row() -> RowSpec:
         unit="ops",
         min="0",
     ).add_auto_range_query(
-        'sum(rate(ticdc_event_service_reset_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_reset_dispatcher_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     skip_scan_count_s = graph(
@@ -181,8 +264,11 @@ def build_event_service_row() -> RowSpec:
         description="The rate of skip scan count in eventService",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_skip_scan_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_skip_scan_count_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     intterrupt_scan_count_s = graph(
@@ -190,8 +276,11 @@ def build_event_service_row() -> RowSpec:
         description="The rate of intterupt scan count in eventService",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_service_interrupt_scan_count_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_service_interrupt_scan_count_count_sum",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     decode_dmlevent_duration = (
@@ -202,16 +291,30 @@ def build_event_service_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'sum(rate(ticdc_event_decode_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_event_decode_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_event_decode_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
         .add_auto_query(
-            'histogram_quantile(0.999, sum(rate(ticdc_event_decode_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p999",
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_event_decode_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p999"),
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_event_decode_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p95",
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_event_decode_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p95"),
         )
     )
 
@@ -221,8 +324,11 @@ def build_event_service_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(rate(ticdc_event_service_send_dml_type_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, dml_type)',
-        legend="{{instance}}-{{dml_type}}",
+        expr_sum_rate(
+            "ticdc_event_service_send_dml_type_count",
+            by_labels=["instance", "dml_type"],
+            scope="instance",
+        ),
     )
 
     row_builder.add_panels(

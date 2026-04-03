@@ -7,6 +7,13 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_sum_rate,
+    not_regex,
+    regex,
+)
 
 
 def build_dynamic_stream_row() -> RowSpec:
@@ -18,7 +25,11 @@ def build_dynamic_stream_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'sum(rate(ticdc_dynamic_stream_event_chan_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, module)',
+        expr_sum_rate(
+            "ticdc_dynamic_stream_event_chan_size",
+            by_labels=["instance", "module"],
+            scope="instance",
+        ),
         legend="{{module}}-Input-chanel-len-{{instance}}",
         ref="B",
     )
@@ -27,7 +38,11 @@ def build_dynamic_stream_row() -> RowSpec:
         "DS Pending Queue Length",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_dynamic_stream_pending_queue_len{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, module)',
+        expr_sum_rate(
+            "ticdc_dynamic_stream_pending_queue_len",
+            by_labels=["instance", "module"],
+            scope="instance",
+        ),
         legend="{{module}}-pending-queue-len-{{instance}}",
         ref="B",
     )
@@ -38,11 +53,23 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_count_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_count",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_count_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_count",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
             hide=True,
         )
@@ -54,11 +81,21 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_count_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_count",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_count_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_count_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_count",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
     )
@@ -70,11 +107,23 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_bytes_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_bytes",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_bytes_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_bytes",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
             hide=True,
         )
@@ -87,11 +136,21 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_bytes_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_bytes_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_bytes",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_bytes_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_bytes_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_bytes",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
             hide=True,
         )
@@ -104,11 +163,23 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_duration",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_dynamic_stream_batch_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (le, instance, module, area))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_dynamic_stream_batch_duration",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
             hide=True,
         )
@@ -121,11 +192,21 @@ def build_dynamic_stream_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"event-collector|log-puller"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_duration",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[regex("module", "event-collector|log-puller")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
         )
         .add_auto_query(
-            'sum(rate(ticdc_dynamic_stream_batch_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area) / sum(rate(ticdc_dynamic_stream_batch_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module!~"^(event-collector|log-puller)$"}[1m])) by (instance, module, area)',
+            expr_histogram_avg(
+                "ticdc_dynamic_stream_batch_duration",
+                by_labels=["instance", "module", "area"],
+                scope="instance",
+                selectors=[not_regex("module", "^(event-collector|log-puller)$")],
+            ),
             legend="{{module}}-{{area}}-{{instance}}",
             hide=True,
         )

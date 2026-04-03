@@ -7,6 +7,15 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_simple,
+    expr_sum,
+    expr_sum_rate,
+    legend_for,
+    regex,
+)
 
 
 def build_log_puller_row() -> RowSpec:
@@ -17,8 +26,11 @@ def build_log_puller_row() -> RowSpec:
         description="The number of KV client dispatched event per second",
         min="0",
     ).add_query(
-        'sum(rate(ticdc_kvclient_pull_event_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum_rate(
+            "ticdc_kvclient_pull_event_count",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
         ref="B",
     )
 
@@ -27,7 +39,7 @@ def build_log_puller_row() -> RowSpec:
         description="To prevent excessive accumulation of region request tasks on the TiKV side, CDC rate-limits how many requests it initiates.",
         min="0",
     ).add_auto_query(
-        'ticdc_subscription_client_requested_region_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_subscription_client_requested_region_count", scope="instance"),
         legend="{{instance}}-count",
     )
 
@@ -39,13 +51,22 @@ def build_log_puller_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_subscription_client_region_request_finish_scan_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_subscription_client_region_request_finish_scan_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p99"),
             format="heatmap",
         )
         .add_auto_query(
-            'sum(rate(ticdc_subscription_client_region_request_finish_scan_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_subscription_client_region_request_finish_scan_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_subscription_client_region_request_finish_scan_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
     )
 
@@ -54,7 +75,7 @@ def build_log_puller_row() -> RowSpec:
         description="To prevent excessive accumulation of region request tasks on the TiKV side, CDC rate-limits how many requests it initiates.",
         min="0",
     ).add_auto_query(
-        'ticdc_subscription_client_subscribed_region_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_subscription_client_subscribed_region_count", scope="instance"),
         legend="{{instance}}-count",
     )
 
@@ -64,8 +85,12 @@ def build_log_puller_row() -> RowSpec:
         unit="bytes",
         min="0",
     ).add_auto_query(
-        'sum(ticdc_dynamic_stream_memory_usage{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", module=~"log-puller"}) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum(
+            "ticdc_dynamic_stream_memory_usage",
+            by_labels=["instance", "type"],
+            scope="instance",
+            selectors=[regex("module", "log-puller")],
+        ),
     )
 
     resolved_ts_batch_size_regions = heatmap(
@@ -73,8 +98,11 @@ def build_log_puller_row() -> RowSpec:
         description="The size of batch resolved regions count",
         unit="none",
     ).add_range_query(
-        'sum(rate(ticdc_kvclient_batch_resolved_event_size_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_kvclient_batch_resolved_event_size_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 
@@ -86,13 +114,22 @@ def build_log_puller_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_subscription_client_region_event_handle_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_subscription_client_region_event_handle_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p99"),
             format="heatmap",
         )
         .add_auto_query(
-            'sum(rate(ticdc_subscription_client_region_event_handle_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_subscription_client_region_event_handle_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_subscription_client_region_event_handle_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
     )
 
@@ -104,13 +141,22 @@ def build_log_puller_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_subscription_client_consume_kv_events_callback_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance, type))',
-            legend="{{instance}}-{{type}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_subscription_client_consume_kv_events_callback_duration",
+                by_labels=["instance", "type"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", "type", suffix="p99"),
             format="heatmap",
         )
         .add_auto_query(
-            'sum(rate(ticdc_subscription_client_consume_kv_events_callback_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type) / sum(rate(ticdc_subscription_client_consume_kv_events_callback_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-            legend="{{instance}}-{{type}}-avg",
+            expr_histogram_avg(
+                "ticdc_subscription_client_consume_kv_events_callback_duration",
+                by_labels=["instance", "type"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", "type", suffix="avg"),
         )
     )
 
@@ -120,8 +166,11 @@ def build_log_puller_row() -> RowSpec:
         unit="ops",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_subscription_client_resolve_lock_task_drop_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_subscription_client_resolve_lock_task_drop_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     row_builder.add_panels(

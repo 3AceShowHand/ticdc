@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_sum, expr_sum_rate, legend_for
 
 
 def build_message_center_row() -> RowSpec:
@@ -18,16 +19,28 @@ def build_message_center_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(rate(ticdc_messaging_error_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, target, type)',
-            legend="err-{{instance}}-{{target}}-{{type}}",
+            expr_sum_rate(
+                "ticdc_messaging_error_counter",
+                by_labels=["instance", "target", "type"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", "target", "type", prefix="err"),
         )
         .add_auto_query(
-            'sum(rate(ticdc_messaging_drop_message_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, target, type)',
-            legend="drop-{{instance}}-{{target}}-{{type}}",
+            expr_sum_rate(
+                "ticdc_messaging_drop_message_counter",
+                by_labels=["instance", "target", "type"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", "target", "type", prefix="drop"),
         )
         .add_auto_query(
-            'sum(rate(ticdc_messaging_send_message_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, target, type)',
-            legend="send-{{instance}}-{{target}}-{{type}}",
+            expr_sum_rate(
+                "ticdc_messaging_send_message_counter",
+                by_labels=["instance", "target", "type"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", "target", "type", prefix="send"),
         )
     )
 
@@ -35,8 +48,11 @@ def build_message_center_row() -> RowSpec:
         "Slow Message Count",
         description="the count of slow message Count",
     ).add_query(
-        'sum(ticdc_messaging_slow_handle_counter{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum(
+            "ticdc_messaging_slow_handle_counter",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
     )
 
     row_builder.add_panels(

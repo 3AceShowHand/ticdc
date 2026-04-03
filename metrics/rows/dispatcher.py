@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_histogram_quantile, expr_max, expr_simple, expr_sum, expr_sum_rate
 
 
 def build_dispatcher_row() -> RowSpec:
@@ -19,8 +20,11 @@ def build_dispatcher_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_dispatchermanagermanager_event_dispatcher_manager_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_dispatchermanagermanager_event_dispatcher_manager_count",
+            by_labels=["instance"],
+            scope="changefeed",
+        ),
     )
 
     table_dispatcher_count = graph(
@@ -28,8 +32,11 @@ def build_dispatcher_row() -> RowSpec:
         description="",
         min="0",
     ).add_query(
-        'sum(ticdc_dispatchermanager_table_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance, changefeed, event_type)',
-        legend="{{instance}}-{{changefeed}}-{{event_type}}",
+        expr_sum(
+            "ticdc_dispatchermanager_table_dispatcher_count",
+            by_labels=["instance", "changefeed", "event_type"],
+            scope="changefeed",
+        ),
     )
 
     table_trigger_dispatcher_count = graph(
@@ -39,7 +46,11 @@ def build_dispatcher_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_dispatchermanager_table_trigger_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance, changefeed, event_type)',
+        expr_sum(
+            "ticdc_dispatchermanager_table_trigger_dispatcher_count",
+            by_labels=["instance", "changefeed", "event_type"],
+            scope="changefeed",
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-{{event_type}}",
     )
 
@@ -51,16 +62,31 @@ def build_dispatcher_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(0.9, sum(rate(ticdc_sink_create_dispatcher_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance, event_type))',
+            expr_histogram_quantile(
+                0.9,
+                "ticdc_sink_create_dispatcher_duration",
+                by_labels=["changefeed", "instance", "event_type"],
+                scope="changefeed",
+            ),
             legend="{{namespace}}-{{changefeed}}-{{instance}}-{{event_type}}-detect-P90",
             ref="C",
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_sink_create_dispatcher_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance, event_type))',
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_sink_create_dispatcher_duration",
+                by_labels=["changefeed", "instance", "event_type"],
+                scope="changefeed",
+            ),
             legend="{{namespace}}-{{changefeed}}-{{instance}}-{{event_type}}-detect-P95",
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_sink_create_dispatcher_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance, event_type))',
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_sink_create_dispatcher_duration",
+                by_labels=["changefeed", "instance", "event_type"],
+                scope="changefeed",
+            ),
             legend="{{namespace}}-{{changefeed}}-{{instance}}-{{event_type}}-detect-P99",
         )
     )
@@ -69,7 +95,11 @@ def build_dispatcher_row() -> RowSpec:
         "Dispatcher Request Handle Result",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_sink_handle_dispatcher_request{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance, type)',
+        expr_sum_rate(
+            "ticdc_sink_handle_dispatcher_request",
+            by_labels=["namespace", "changefeed", "instance", "type"],
+            scope="changefeed",
+        ),
         legend="{{instance}}-{{target}}-{{type}}",
     )
 
@@ -78,8 +108,11 @@ def build_dispatcher_row() -> RowSpec:
         description="the number of registered dispatchers in event collector",
         min="0",
     ).add_query(
-        'sum(ticdc_event_service_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_event_service_dispatcher_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     event_collector_received_resolved_ts_s = graph(
@@ -87,8 +120,12 @@ def build_dispatcher_row() -> RowSpec:
         description="The number of rows that event collector received per second.",
         min="0",
     ).add_query(
-        'sum(rate(ticdc_dispatcher_received_event_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type="ResolvedTs"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_dispatcher_received_event_count",
+            by_labels=["instance"],
+            scope="instance",
+            selectors=['type="ResolvedTs"'],
+        ),
     )
 
     event_collector_handle_message_duration = heatmap(
@@ -96,8 +133,11 @@ def build_dispatcher_row() -> RowSpec:
         description="",
         unit="s",
     ).add_range_query(
-        'sum(rate(ticdc_event_collector_handle_event_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_event_collector_handle_event_duration_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 
@@ -106,8 +146,11 @@ def build_dispatcher_row() -> RowSpec:
         description="Length of dispatcher manager block statuses channel.",
         min="0",
     ).add_query(
-        'max(ticdc_dispatchermanager_block_statuses_chan_len{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_dispatchermanager_block_statuses_chan_len",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     block_status_request_queue_length = graph(
@@ -115,7 +158,10 @@ def build_dispatcher_row() -> RowSpec:
         description="Length of heartbeat collector block status request queue.",
         min="0",
     ).add_query(
-        'ticdc_heartbeat_collector_block_status_request_queue_len{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple(
+            "ticdc_heartbeat_collector_block_status_request_queue_len",
+            scope="instance",
+        ),
         legend="{{instance}}",
     )
 
@@ -124,8 +170,11 @@ def build_dispatcher_row() -> RowSpec:
         description="",
         unit="s",
     ).add_range_query(
-        'sum(rate(ticdc_dispatcher_received_event_lag_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_dispatcher_received_event_lag_duration_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 

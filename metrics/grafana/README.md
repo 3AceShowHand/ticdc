@@ -156,7 +156,6 @@ make check
 - `panel.add_auto_query(...)`
 - `panel.add_range_query(...)`
 - `panel.add_auto_range_query(...)`
-- `graph(...).add_histogram(...)`
 - `table(...).add_label_query(...)`
 
 这些方法都返回 `self`，允许链式调用。但推荐风格仍然是：
@@ -222,10 +221,11 @@ def build_dashboard_spec():
 - Gauge
   通常用 `expr_sum(...)`、`expr_avg(...)`、`expr_max(...)`、`expr_simple(...)`
 - Histogram
-  通常用 `expr_histogram_quantile(...)`、`expr_histogram_avg(...)`，或者 bucket heatmap
+  通常显式使用 `expr_histogram_quantile(...)`、`expr_histogram_avg(...)`，
+  或者 bucket heatmap
 
-`add_histogram(...)` 只适合“标准 quantile + avg”模式。
-不要为了统一外观，把 mixed-mode histogram panel 硬塞进一个越来越复杂的 helper。
+Histogram panel 里到底展示 `quantile`、`avg` 还是两者同时展示，应该由
+row 作者显式决定。不要再用 panel builder 隐式展开多条 query。
 
 ## 设计原则
 

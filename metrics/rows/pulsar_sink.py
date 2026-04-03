@@ -7,6 +7,15 @@ from __future__ import annotations
 
 from metrics.builders import LineLayouts, graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    eq,
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_increase,
+    expr_simple,
+    expr_sum,
+    regex,
+)
 
 
 def build_pulsar_sink_row() -> RowSpec:
@@ -17,11 +26,30 @@ def build_pulsar_sink_row() -> RowSpec:
             "Pulsar Published DDL Schema Count",
         )
         .add_query(
-            'increase(ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="count"}[30s]) / 2',
+            expr_increase(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "count"),
+                ],
+                window="30s",
+            ).op("/", "2"),
             legend="",
         )
         .add_query(
-            'ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="count"}',
+            expr_simple(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "count"),
+                ],
+            ),
             legend="",
             ref="A",
         )
@@ -32,11 +60,30 @@ def build_pulsar_sink_row() -> RowSpec:
             "Pulsar Published DDL Schema Success",
         )
         .add_query(
-            'increase(ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="success"}[30s]) / 2',
+            expr_increase(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "success"),
+                ],
+                window="30s",
+            ).op("/", "2"),
             legend="",
         )
         .add_query(
-            'ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="success"}',
+            expr_simple(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "success"),
+                ],
+            ),
             legend="",
             ref="A",
         )
@@ -47,11 +94,30 @@ def build_pulsar_sink_row() -> RowSpec:
             "Pulsar Published DDL Schema Fail",
         )
         .add_query(
-            'increase(ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="fail"}[30s]) / 2',
+            expr_increase(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "fail"),
+                ],
+                window="30s",
+            ).op("/", "2"),
             legend="",
         )
         .add_query(
-            'ticdc_pulsar_published_DDL_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="fail"}',
+            expr_simple(
+                "ticdc_pulsar_published_DDL_schema_table_count",
+                scope="none",
+                selectors=[
+                    regex("changefeed", "$changefeed"),
+                    regex("schema", "$schema"),
+                    regex("topic", "$topic"),
+                    eq("type", "fail"),
+                ],
+            ),
             legend="",
             ref="A",
         )
@@ -60,21 +126,51 @@ def build_pulsar_sink_row() -> RowSpec:
     pulsar_published_dml_schema_count = graph(
         "Pulsar Published DML Schema Count",
     ).add_query(
-        'increase(ticdc_pulsar_published_DML_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="count"}[30s]) / 2',
+        expr_increase(
+            "ticdc_pulsar_published_DML_schema_table_count",
+            scope="none",
+            selectors=[
+                regex("changefeed", "$changefeed"),
+                regex("schema", "$schema"),
+                regex("topic", "$topic"),
+                eq("type", "count"),
+            ],
+            window="30s",
+        ).op("/", "2"),
         legend="",
     )
 
     pulsar_published_dml_schema_success = graph(
         "Pulsar Published DML Schema Success",
     ).add_query(
-        'increase(ticdc_pulsar_published_DML_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="success"}[30s]) / 2',
+        expr_increase(
+            "ticdc_pulsar_published_DML_schema_table_count",
+            scope="none",
+            selectors=[
+                regex("changefeed", "$changefeed"),
+                regex("schema", "$schema"),
+                regex("topic", "$topic"),
+                eq("type", "success"),
+            ],
+            window="30s",
+        ).op("/", "2"),
         legend="",
     )
 
     pulsar_published_dml_schema_fail = graph(
         "Pulsar Published DML Schema Fail",
     ).add_query(
-        'increase(ticdc_pulsar_published_DML_schema_table_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic", type="fail"}[30s]) / 2',
+        expr_increase(
+            "ticdc_pulsar_published_DML_schema_table_count",
+            scope="none",
+            selectors=[
+                regex("changefeed", "$changefeed"),
+                regex("schema", "$schema"),
+                regex("topic", "$topic"),
+                eq("type", "fail"),
+            ],
+            window="30s",
+        ).op("/", "2"),
         legend="",
     )
 
@@ -82,24 +178,36 @@ def build_pulsar_sink_row() -> RowSpec:
         "Pulsar Client Bytes Published",
         unit="bytes",
     ).add_query(
-        'sum(pulsar_client_bytes_published{changefeed=~"$changefeed"}) by (changefeed, instance)',
-        legend="{{changefeed}}-{{instance}}",
+        expr_sum(
+            "pulsar_client_bytes_published",
+            by_labels=["changefeed", "instance"],
+            scope="none",
+            selectors=[regex("changefeed", "$changefeed")],
+        ),
     )
 
     pulsar_client_connections_opened = graph(
         "Pulsar Client Connections Opened",
         unit="none",
     ).add_range_query(
-        'sum(pulsar_client_connections_opened{changefeed=~"$changefeed"}) by (changefeed, instance)',
-        legend="{{changefeed}}-{{instance}}",
+        expr_sum(
+            "pulsar_client_connections_opened",
+            by_labels=["changefeed", "instance"],
+            scope="none",
+            selectors=[regex("changefeed", "$changefeed")],
+        ),
     )
 
     pulsar_client_rpc_count = graph(
         "Pulsar Client RPC Count",
         unit="none",
     ).add_range_query(
-        'sum(pulsar_client_rpc_count{changefeed=~"$changefeed"}) by (changefeed, instance)',
-        legend="{{changefeed}}-{{instance}}",
+        expr_sum(
+            "pulsar_client_rpc_count",
+            by_labels=["changefeed", "instance"],
+            scope="none",
+            selectors=[regex("changefeed", "$changefeed")],
+        ),
     )
 
     pulsar_client_producer_latency = (
@@ -108,11 +216,22 @@ def build_pulsar_sink_row() -> RowSpec:
             unit="s",
         )
         .add_range_query(
-            'histogram_quantile(0.999, sum(rate(pulsar_client_producer_latency_seconds_bucket{changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance))',
+            expr_histogram_quantile(
+                0.999,
+                "pulsar_client_producer_latency_seconds",
+                by_labels=["changefeed", "instance"],
+                scope="none",
+                selectors=[regex("changefeed", "$changefeed")],
+            ),
             legend="{{changefeed}}-{{instance}}-P999",
         )
         .add_auto_query(
-            'sum(rate(pulsar_client_producer_latency_seconds_sum{changefeed=~"$changefeed"}[1m])) by (changefeed, instance) / sum(rate(pulsar_client_producer_latency_seconds_count{changefeed=~"$changefeed"}[1m])) by (changefeed, instance)',
+            expr_histogram_avg(
+                "pulsar_client_producer_latency_seconds",
+                by_labels=["changefeed", "instance"],
+                scope="none",
+                selectors=[regex("changefeed", "$changefeed")],
+            ),
             legend="",
         )
     )
@@ -121,7 +240,13 @@ def build_pulsar_sink_row() -> RowSpec:
         "Pulsar Client Producer RPC Latency",
         unit="s",
     ).add_range_query(
-        'histogram_quantile(0.999, sum(rate(pulsar_client_producer_rpc_latency_seconds_bucket{changefeed=~"$changefeed"}[1m])) by (le, changefeed, instance))',
+        expr_histogram_quantile(
+            0.999,
+            "pulsar_client_producer_rpc_latency_seconds",
+            by_labels=["changefeed", "instance"],
+            scope="none",
+            selectors=[regex("changefeed", "$changefeed")],
+        ),
         legend="{{changefeed}}-{{instance}}",
     )
 
@@ -130,8 +255,12 @@ def build_pulsar_sink_row() -> RowSpec:
         unit="none",
         key="producer_pending_messages",
     ).add_range_query(
-        'sum(pulsar_client_producer_pending_messages{changefeed=~"$changefeed"}) by (changefeed, instance)',
-        legend="{{changefeed}}-{{instance}}",
+        expr_sum(
+            "pulsar_client_producer_pending_messages",
+            by_labels=["changefeed", "instance"],
+            scope="none",
+            selectors=[regex("changefeed", "$changefeed")],
+        ),
     )
 
     pulsar_client_resolved_message_count = graph(
@@ -139,7 +268,16 @@ def build_pulsar_sink_row() -> RowSpec:
         unit="none",
         key="resolved_message_count",
     ).add_range_query(
-        'sum(published_message_type_resolved_count{changefeed=~"$changefeed", schema=~"$schema", topic=~"$topic"}) by (changefeed)',
+        expr_sum(
+            "published_message_type_resolved_count",
+            by_labels=["changefeed"],
+            scope="none",
+            selectors=[
+                regex("changefeed", "$changefeed"),
+                regex("schema", "$schema"),
+                regex("topic", "$topic"),
+            ],
+        ),
         legend="{{changefeed}}-{{topic}}",
     )
 

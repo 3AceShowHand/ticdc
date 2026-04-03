@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_max, expr_simple, expr_sum, expr_sum_rate, legend_for, regex
 
 
 def build_lag_summary_row() -> RowSpec:
@@ -18,8 +19,11 @@ def build_lag_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_maintainer_checkpoint_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_maintainer_checkpoint_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
     )
 
     maintainer_resolved_ts_lag = graph(
@@ -28,8 +32,12 @@ def build_lag_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_maintainer_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}-resolvedts",
+        expr_max(
+            "ticdc_maintainer_resolved_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="changefeed",
+        ),
+        legend=legend_for("namespace", "changefeed", suffix="resolvedts"),
     )
 
     eventstore_resolved_ts_lag = graph(
@@ -38,8 +46,11 @@ def build_lag_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_auto_query(
-        'sum(ticdc_event_store_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_event_store_resolved_ts_lag",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     eventservice_resolved_ts_lag = (
@@ -50,12 +61,22 @@ def build_lag_summary_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'sum(ticdc_event_service_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type=~"received"}) by (instance, type)',
-            legend="{{type}}-{{instance}}",
+            expr_sum(
+                "ticdc_event_service_resolved_ts_lag",
+                by_labels=["instance", "type"],
+                scope="instance",
+                selectors=[regex("type", "received")],
+            ),
+            legend=legend_for("type", "instance"),
         )
         .add_auto_query(
-            'sum(ticdc_event_service_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type=~"sent"}) by (instance, type)',
-            legend="{{type}}-{{instance}}",
+            expr_sum(
+                "ticdc_event_service_resolved_ts_lag",
+                by_labels=["instance", "type"],
+                scope="instance",
+                selectors=[regex("type", "sent")],
+            ),
+            legend=legend_for("type", "instance"),
         )
     )
 
@@ -65,7 +86,14 @@ def build_lag_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'ticdc_dispatchermanager_checkpoint_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}',
+        expr_simple(
+            "ticdc_dispatchermanager_checkpoint_ts_lag",
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-checkpointTsLag",
         ref="B",
     )
@@ -76,7 +104,14 @@ def build_lag_summary_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'ticdc_dispatchermanager_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}',
+        expr_simple(
+            "ticdc_dispatchermanager_resolved_ts_lag",
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-resolvedts",
         ref="B",
     )
@@ -86,8 +121,11 @@ def build_lag_summary_row() -> RowSpec:
         description="",
         unit="ms",
     ).add_range_query(
-        'sum(rate(ticdc_dispatcher_received_event_lag_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_rate(
+            "ticdc_dispatcher_received_event_lag_duration_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
         format="heatmap",
     )
 

@@ -7,6 +7,12 @@ from __future__ import annotations
 
 from metrics.builders import graph, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_sum_increase,
+    expr_sum_rate,
+)
 
 
 def build_sink_transaction_row() -> RowSpec:
@@ -18,35 +24,65 @@ def build_sink_transaction_row() -> RowSpec:
             description="Duration of event staying in conflict detector",
             unit="s",
         )
-        .add_histogram(
-            "ticdc_sink_txn_conflict_detect_duration",
-            by_labels=["namespace", "changefeed", "instance"],
-            scope="changefeed",
-            quantile=0.999,
-            quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-P999",
-            average_legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-avg",
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_txn_conflict_detect_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-P999",
         )
-        .add_histogram(
-            "ticdc_sink_txn_queue_duration",
-            by_labels=["namespace", "changefeed", "instance"],
-            scope="changefeed",
-            quantile=0.999,
-            quantile_legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-P999",
-            average_legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-avg",
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_txn_conflict_detect_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-detect-avg",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_txn_queue_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-P999",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_txn_queue_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="{{namespace}}-{{changefeed}}-{{instance}}-queue-avg",
         )
     )
 
-    full_flush_duration = graph(
-        "Full Flush Duration",
-        description="Full flush (backend flush + callback + conflict detector notify) duration",
-        unit="s",
-    ).add_histogram(
-        "ticdc_sink_txn_worker_flush_duration",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+    full_flush_duration = (
+        graph(
+            "Full Flush Duration",
+            description="Full flush (backend flush + callback + conflict detector notify) duration",
+            unit="s",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_txn_worker_flush_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_txn_worker_flush_duration",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
     )
 
     worker_busy_ratio = graph(
@@ -55,7 +91,20 @@ def build_sink_transaction_row() -> RowSpec:
         unit="percent",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_sink_txn_worker_batch_flush_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance, id) / sum(rate(ticdc_sink_txn_worker_total_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance, id) * 100',
+        expr_sum_rate(
+            "ticdc_sink_txn_worker_batch_flush_duration_sum",
+            by_labels=["namespace", "changefeed", "instance", "id"],
+            scope="changefeed",
+        )
+        .op(
+            "/",
+            expr_sum_rate(
+                "ticdc_sink_txn_worker_total_duration_sum",
+                by_labels=["namespace", "changefeed", "instance", "id"],
+                scope="changefeed",
+            ),
+        )
+        .op("*", "100"),
         legend="{{namespace}}-{{changefeed}}-{{instance}}-worker-{{id}}",
     )
 
@@ -63,22 +112,37 @@ def build_sink_transaction_row() -> RowSpec:
         "Worker Input Rows / s",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_sink_txn_worker_handled_rows{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, instance, id)',
-        legend="{{namespace}}-{{changefeed}}-{{instance}}-{{id}}",
+        expr_sum_rate(
+            "ticdc_sink_txn_worker_handled_rows",
+            by_labels=["namespace", "changefeed", "instance", "id"],
+            scope="changefeed",
+        ),
     )
 
-    backend_flush_duration = graph(
-        "Backend Flush Duration",
-        description="Distribution of flush transaction duration to backend",
-        unit="s",
-        min="0",
-    ).add_histogram(
-        "ticdc_sink_txn_sink_dml_batch_commit",
-        by_labels=["namespace", "changefeed", "instance"],
-        scope="changefeed",
-        quantile=0.999,
-        quantile_legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
-        average_legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+    backend_flush_duration = (
+        graph(
+            "Backend Flush Duration",
+            description="Distribution of flush transaction duration to backend",
+            unit="s",
+            min="0",
+        )
+        .add_auto_query(
+            expr_histogram_quantile(
+                0.999,
+                "ticdc_sink_txn_sink_dml_batch_commit",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="99.9-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
+        .add_auto_query(
+            expr_histogram_avg(
+                "ticdc_sink_txn_sink_dml_batch_commit",
+                by_labels=["namespace", "changefeed", "instance"],
+                scope="changefeed",
+            ),
+            legend="avg-{{namespace}}-{{changefeed}}-{{instance}}",
+        )
     )
 
     row_affected_count_m = graph(
@@ -87,8 +151,11 @@ def build_sink_transaction_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(increase(ticdc_sink_dml_event_affected_row_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}[1m])) by (namespace, changefeed, count_type, row_type)',
-        legend="{{namespace}}-{{changefeed}}-{{count_type}}-{{row_type}}",
+        expr_sum_increase(
+            "ticdc_sink_dml_event_affected_row_count",
+            by_labels=["namespace", "changefeed", "count_type", "row_type"],
+            scope="changefeed",
+        ),
     )
 
     row_builder.add_panels(

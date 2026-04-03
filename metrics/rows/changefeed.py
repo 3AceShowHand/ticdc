@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from metrics.builders import LineLayouts, graph, row, table
 from metrics.dsl.specs import RowSpec
+from metrics.queries import expr_max, expr_sum, legend_for, regex
 
 
 def build_changefeed_row() -> RowSpec:
@@ -18,8 +19,11 @@ def build_changefeed_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_dispatchermanager_table_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_dispatchermanager_table_dispatcher_count",
+            by_labels=["instance"],
+            scope="changefeed",
+        )
     )
 
     changefeed_table_count = graph(
@@ -28,8 +32,11 @@ def build_changefeed_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_query(
-        'sum(ticdc_dispatchermanager_table_dispatcher_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", namespace=~"$namespace", changefeed=~"$changefeed"}) by (changefeed)',
-        legend="{{changefeed}}",
+        expr_sum(
+            "ticdc_dispatchermanager_table_dispatcher_count",
+            by_labels=["changefeed"],
+            scope="changefeed",
+        )
     )
 
     gc_time = (
@@ -38,11 +45,11 @@ def build_changefeed_row() -> RowSpec:
             unit="dateTimeAsIso",
         )
         .add_auto_query(
-            "max(ticdc_gc_min_service_gc_safepoint)",
+            expr_max("ticdc_gc_min_service_gc_safepoint", scope="none"),
             legend="gc time",
         )
         .add_auto_query(
-            "max(ticdc_gc_cdc_gc_safepoint)",
+            expr_max("ticdc_gc_cdc_gc_safepoint", scope="none"),
             legend="cdc service safepoint",
         )
     )
@@ -54,12 +61,19 @@ def build_changefeed_row() -> RowSpec:
             unit="dateTimeAsIso",
         )
         .add_query(
-            'max(pd_cluster_tso{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster"})',
+            expr_max("pd_cluster_tso", scope="cluster"),
             legend="approximate current time (s)",
         )
         .add_query(
-            'max(ticdc_owner_checkpoint_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}",
+            expr_max(
+                "ticdc_owner_checkpoint_ts",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
         )
     )
 
@@ -70,17 +84,33 @@ def build_changefeed_row() -> RowSpec:
             unit="dateTimeAsIso",
         )
         .add_query(
-            'max(pd_cluster_tso{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster"})',
+            expr_max("pd_cluster_tso", scope="cluster"),
             legend="approximate current time (s)",
         )
         .add_query(
-            'max(ticdc_owner_resolved_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}-barrier",
+            expr_max(
+                "ticdc_owner_resolved_ts",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
+            legend=legend_for("namespace", "changefeed", suffix="barrier"),
             ref="C",
         )
         .add_auto_query(
-            'max(ticdc_scheduler_slow_table_puller_resolved_ts{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}-puller",
+            expr_max(
+                "ticdc_scheduler_slow_table_puller_resolved_ts",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
+            legend=legend_for("namespace", "changefeed", suffix="puller"),
         )
     )
 
@@ -90,8 +120,15 @@ def build_changefeed_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_query(
-        'max(ticdc_owner_checkpoint_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-        legend="{{namespace}}-{{changefeed}}",
+        expr_max(
+            "ticdc_owner_checkpoint_ts_lag",
+            by_labels=["namespace", "changefeed"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
     )
 
     changefeed_resolved_ts_lag = (
@@ -102,13 +139,29 @@ def build_changefeed_row() -> RowSpec:
             min="0",
         )
         .add_query(
-            'max(ticdc_owner_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}-barrier",
+            expr_max(
+                "ticdc_owner_resolved_ts_lag",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
+            legend=legend_for("namespace", "changefeed", suffix="barrier"),
             ref="C",
         )
         .add_auto_query(
-            'max(ticdc_scheduler_slow_table_puller_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"}) by (namespace, changefeed)',
-            legend="{{namespace}}-{{changefeed}}-puller",
+            expr_max(
+                "ticdc_scheduler_slow_table_puller_resolved_ts_lag",
+                by_labels=["namespace", "changefeed"],
+                scope="cluster",
+                selectors=[
+                    regex("namespace", "$namespace"),
+                    regex("changefeed", "$changefeed"),
+                ],
+            ),
+            legend=legend_for("namespace", "changefeed", suffix="puller"),
         )
     )
 
@@ -116,8 +169,17 @@ def build_changefeed_row() -> RowSpec:
         "Changefeed Error Details",
         description="Current warning or failed reason of each changefeed. The metric message is normalized to a single line and truncated to 256 characters.",
     ).add_label_query(
-        'max by (namespace, changefeed, state, code, message) (ticdc_owner_changefeed_error_info{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", namespace=~"$namespace", changefeed=~"$changefeed"})',
+        expr_max(
+            "ticdc_owner_changefeed_error_info",
+            by_labels=["namespace", "changefeed", "state", "code", "message"],
+            scope="cluster",
+            selectors=[
+                regex("namespace", "$namespace"),
+                regex("changefeed", "$changefeed"),
+            ],
+        ),
         columns=["namespace", "changefeed", "state", "code", "message"],
+        legend="",
     )
 
     row_builder.add_panels(

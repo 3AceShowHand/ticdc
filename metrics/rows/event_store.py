@@ -7,6 +7,18 @@ from __future__ import annotations
 
 from metrics.builders import graph, heatmap, row
 from metrics.dsl.specs import RowSpec
+from metrics.queries import (
+    eq,
+    expr_histogram_avg,
+    expr_histogram_quantile,
+    expr_max,
+    expr_simple,
+    expr_sum,
+    expr_sum_increase,
+    expr_sum_rate,
+    legend_for,
+    regex,
+)
 
 
 def build_event_store_row() -> RowSpec:
@@ -17,7 +29,7 @@ def build_event_store_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_auto_query(
-        'ticdc_event_store_resolved_ts_lag{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_event_store_resolved_ts_lag", scope="instance"),
         legend="{{instance}}",
     )
 
@@ -29,16 +41,31 @@ def build_event_store_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(1.0, sum(rate(ticdc_event_store_register_dispatcher_start_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-max",
+            expr_histogram_quantile(
+                1.0,
+                "ticdc_event_store_register_dispatcher_start_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="max"),
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_event_store_register_dispatcher_start_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p95",
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_event_store_register_dispatcher_start_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p95"),
         )
         .add_auto_query(
-            'histogram_quantile(0.8, sum(rate(ticdc_event_store_register_dispatcher_start_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p80",
+            expr_histogram_quantile(
+                0.8,
+                "ticdc_event_store_register_dispatcher_start_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p80"),
             hide=True,
         )
     )
@@ -51,16 +78,31 @@ def build_event_store_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(1, sum(rate(ticdc_event_store_subscription_resolved_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-max",
+            expr_histogram_quantile(
+                1,
+                "ticdc_event_store_subscription_resolved_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="max"),
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_event_store_subscription_resolved_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p95",
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_event_store_subscription_resolved_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p95"),
         )
         .add_auto_query(
-            'histogram_quantile(0.8, sum(rate(ticdc_event_store_subscription_resolved_ts_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p80",
+            expr_histogram_quantile(
+                0.8,
+                "ticdc_event_store_subscription_resolved_ts_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p80"),
             hide=True,
         )
     )
@@ -73,16 +115,31 @@ def build_event_store_row() -> RowSpec:
             min="0",
         )
         .add_auto_query(
-            'histogram_quantile(1, sum(rate(ticdc_event_store_subscription_data_gc_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-max",
+            expr_histogram_quantile(
+                1,
+                "ticdc_event_store_subscription_data_gc_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="max"),
         )
         .add_auto_query(
-            'histogram_quantile(0.95, sum(rate(ticdc_event_store_subscription_data_gc_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p95",
+            expr_histogram_quantile(
+                0.95,
+                "ticdc_event_store_subscription_data_gc_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p95"),
         )
         .add_auto_query(
-            'histogram_quantile(0.8, sum(rate(ticdc_event_store_subscription_data_gc_lag_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p80",
+            expr_histogram_quantile(
+                0.8,
+                "ticdc_event_store_subscription_data_gc_lag",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p80"),
             hide=True,
         )
     )
@@ -92,8 +149,11 @@ def build_event_store_row() -> RowSpec:
         description="The number of events received by event store.",
         min="0",
     ).add_query(
-        'sum(rate(ticdc_event_store_input_event_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum_rate(
+            "ticdc_event_store_input_event_count",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
     )
 
     input_bytes_s = graph(
@@ -102,8 +162,11 @@ def build_event_store_row() -> RowSpec:
         unit="binBps",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_write_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_write_bytes",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     write_requests_s = graph(
@@ -111,8 +174,11 @@ def build_event_store_row() -> RowSpec:
         description="The number of write requests received by event store",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_write_requests_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_write_requests_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     write_worker_busy_ratio = graph(
@@ -120,7 +186,20 @@ def build_event_store_row() -> RowSpec:
         description="Busy ratio for event store write worker.",
         unit="percent",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_write_worker_io_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, db, worker) / sum(rate(ticdc_event_store_write_worker_total_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, db, worker) * 100',
+        expr_sum_rate(
+            "ticdc_event_store_write_worker_io_duration_sum",
+            by_labels=["instance", "db", "worker"],
+            scope="instance",
+        )
+        .op(
+            "/",
+            expr_sum_rate(
+                "ticdc_event_store_write_worker_total_duration_sum",
+                by_labels=["instance", "db", "worker"],
+                scope="instance",
+            ),
+        )
+        .op("*", "100"),
         legend="{{instance}}-db-{{db}}-worker-{{worker}}",
     )
 
@@ -129,8 +208,11 @@ def build_event_store_row() -> RowSpec:
         description="The number of rows compressed by event store per second.",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_compressed_rows_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_compressed_rows_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     write_duration = (
@@ -140,17 +222,31 @@ def build_event_store_row() -> RowSpec:
             unit="s",
         )
         .add_range_query(
-            'histogram_quantile(1, sum(rate(ticdc_event_store_write_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-max",
+            expr_histogram_quantile(
+                1,
+                "ticdc_event_store_write_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="max"),
         )
         .add_auto_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_event_store_write_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_event_store_write_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p99"),
             hide=True,
         )
         .add_auto_query(
-            'sum(rate(ticdc_event_store_write_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_event_store_write_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_event_store_write_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
     )
 
@@ -162,13 +258,22 @@ def build_event_store_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_event_store_write_queue_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_event_store_write_queue_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p99"),
             format="heatmap",
         )
         .add_auto_query(
-            'sum(rate(ticdc_event_store_write_queue_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_event_store_write_queue_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_event_store_write_queue_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
     )
 
@@ -180,13 +285,22 @@ def build_event_store_row() -> RowSpec:
             min="0",
         )
         .add_range_query(
-            'histogram_quantile(0.99, sum(rate(ticdc_event_store_write_prepare_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance))',
-            legend="{{instance}}-p99",
+            expr_histogram_quantile(
+                0.99,
+                "ticdc_event_store_write_prepare_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="p99"),
             format="heatmap",
         )
         .add_auto_query(
-            'sum(rate(ticdc_event_store_write_prepare_duration_sum{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance) / sum(rate(ticdc_event_store_write_prepare_duration_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-            legend="{{instance}}-avg",
+            expr_histogram_avg(
+                "ticdc_event_store_write_prepare_duration",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", suffix="avg"),
         )
     )
 
@@ -194,15 +308,21 @@ def build_event_store_row() -> RowSpec:
         "Write Batch Size",
         unit="bytes",
     ).add_query(
-        'sum(increase(ticdc_event_store_write_batch_size_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_increase(
+            "ticdc_event_store_write_batch_size_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
     )
 
     write_batch_event_count = heatmap(
         "Write Batch Event Count",
     ).add_query(
-        'sum(increase(ticdc_event_store_write_batch_events_count_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le)',
-        legend="{{le}}",
+        expr_sum_increase(
+            "ticdc_event_store_write_batch_events_count_bucket",
+            by_labels=["le"],
+            scope="instance",
+        ),
     )
 
     data_size_on_disk = graph(
@@ -210,8 +330,11 @@ def build_event_store_row() -> RowSpec:
         description="The amount of pending data stored on-disk for event store",
         unit="bytes",
     ).add_auto_query(
-        'sum(ticdc_event_store_on_disk_data_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_event_store_on_disk_data_size",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     data_size_in_memory = graph(
@@ -219,8 +342,11 @@ def build_event_store_row() -> RowSpec:
         description="The amount of pending data stored in-memory for event store",
         unit="bytes",
     ).add_auto_query(
-        'sum(ticdc_event_store_in_memory_data_size{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-        legend="{{instance}}",
+        expr_sum(
+            "ticdc_event_store_in_memory_data_size",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     scan_requests_s = graph(
@@ -229,8 +355,11 @@ def build_event_store_row() -> RowSpec:
         unit="ops",
         min="0",
     ).add_auto_range_query(
-        'sum(rate(ticdc_event_store_scan_requests_count{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_scan_requests_count",
+            by_labels=["instance"],
+            scope="instance",
+        ),
     )
 
     scan_bytes_s = graph(
@@ -239,8 +368,11 @@ def build_event_store_row() -> RowSpec:
         unit="binBps",
         min="0",
     ).add_auto_query(
-        'sum(rate(ticdc_event_store_scan_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum_rate(
+            "ticdc_event_store_scan_bytes",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
     )
 
     subscription_num = graph(
@@ -249,7 +381,7 @@ def build_event_store_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'ticdc_event_store_subscription_num{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}',
+        expr_simple("ticdc_event_store_subscription_num", scope="instance"),
         legend="{{instance}}",
     )
 
@@ -259,8 +391,13 @@ def build_event_store_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_range_query(
-        'histogram_quantile(0.99, sum(rate(ticdc_event_store_read_duration_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance, type))',
-        legend="{{instance}}-{{type}}-p99",
+        expr_histogram_quantile(
+            0.99,
+            "ticdc_event_store_read_duration",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
+        legend=legend_for("instance", "type", suffix="p99"),
     )
 
     pebble_block_cache_access_s = graph(
@@ -269,8 +406,11 @@ def build_event_store_row() -> RowSpec:
         unit="ops",
         min="0",
     ).add_auto_range_query(
-        'sum(rate(ticdc_event_store_pebble_block_cache_access_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, type)',
-        legend="{{instance}}-{{type}}",
+        expr_sum_rate(
+            "ticdc_event_store_pebble_block_cache_access_total",
+            by_labels=["instance", "type"],
+            scope="instance",
+        ),
     )
 
     pebble_block_cache_hit_ratio = graph(
@@ -279,8 +419,20 @@ def build_event_store_row() -> RowSpec:
         unit="percent",
         min="0",
     ).add_range_query(
-        'sum(rate(ticdc_event_store_pebble_block_cache_access_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type="hit"}[1m])) by (instance) / sum(rate(ticdc_event_store_pebble_block_cache_access_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance", type=~"hit|miss"}[1m])) by (instance)',
-        legend="{{instance}}",
+        expr_sum_rate(
+            "ticdc_event_store_pebble_block_cache_access_total",
+            by_labels=["instance"],
+            scope="instance",
+            selectors=[eq("type", "hit")],
+        ).op(
+            "/",
+            expr_sum_rate(
+                "ticdc_event_store_pebble_block_cache_access_total",
+                by_labels=["instance"],
+                scope="instance",
+                selectors=[regex("type", "hit|miss")],
+            ),
+        ),
     )
 
     pebble_compaction_duration_seconds = graph(
@@ -289,7 +441,12 @@ def build_event_store_row() -> RowSpec:
         unit="s",
         min="0",
     ).add_range_query(
-        'histogram_quantile(0.99, sum(rate(ticdc_event_store_pebble_compaction_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance, id))',
+        expr_histogram_quantile(
+            0.99,
+            "ticdc_event_store_pebble_compaction_duration_seconds",
+            by_labels=["instance", "id"],
+            scope="instance",
+        ),
         legend="{{instance}}-{{type}}-p99",
     )
 
@@ -300,7 +457,12 @@ def build_event_store_row() -> RowSpec:
         min="0",
         key="pebble_flush_duration_primary",
     ).add_range_query(
-        'histogram_quantile(0.99, sum(rate(ticdc_event_store_pebble_flush_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance, id))',
+        expr_histogram_quantile(
+            0.99,
+            "ticdc_event_store_pebble_flush_duration_seconds",
+            by_labels=["instance", "id"],
+            scope="instance",
+        ),
         legend="{{instance}}-{{type}}-p99",
     )
 
@@ -311,12 +473,20 @@ def build_event_store_row() -> RowSpec:
             unit="bytes",
         )
         .add_auto_query(
-            'max(ticdc_event_store_pebble_compaction_debt_bytes{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-            legend="debt-{{instance}}",
+            expr_max(
+                "ticdc_event_store_pebble_compaction_debt_bytes",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", prefix="debt"),
         )
         .add_auto_query(
-            'max(ticdc_event_store_pebble_compaction_in_progress{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance)',
-            legend="inprogress-{{instance}}",
+            expr_max(
+                "ticdc_event_store_pebble_compaction_in_progress",
+                by_labels=["instance"],
+                scope="instance",
+            ),
+            legend=legend_for("instance", prefix="inprogress"),
         )
     )
 
@@ -327,7 +497,12 @@ def build_event_store_row() -> RowSpec:
         min="0",
         key="pebble_flush_duration_secondary",
     ).add_range_query(
-        'histogram_quantile(0.99, sum(rate(ticdc_event_store_pebble_flush_duration_seconds_bucket{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (le, instance, id))',
+        expr_histogram_quantile(
+            0.99,
+            "ticdc_event_store_pebble_flush_duration_seconds",
+            by_labels=["instance", "id"],
+            scope="instance",
+        ),
         legend="{{instance}}-{{type}}-p99",
     )
 
@@ -337,7 +512,11 @@ def build_event_store_row() -> RowSpec:
         unit="ops",
         min="0",
     ).add_auto_range_query(
-        'sum(rate(ticdc_event_store_pebble_write_stall_total{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}[1m])) by (instance, id, reason)',
+        expr_sum_rate(
+            "ticdc_event_store_pebble_write_stall_total",
+            by_labels=["instance", "id", "reason"],
+            scope="instance",
+        ),
         legend="{{instance}}",
     )
 
@@ -347,8 +526,11 @@ def build_event_store_row() -> RowSpec:
         min="0",
         decimals=0,
     ).add_auto_query(
-        'max(ticdc_event_store_pebble_level_files{k8s_cluster="$k8s_cluster", tidb_cluster="$tidb_cluster", instance=~"$ticdc_instance"}) by (instance, level)',
-        legend="{{instance}}-{{level}}",
+        expr_max(
+            "ticdc_event_store_pebble_level_files",
+            by_labels=["instance", "level"],
+            scope="instance",
+        ),
     )
 
     row_builder.add_panels(

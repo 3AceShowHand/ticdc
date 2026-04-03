@@ -47,15 +47,7 @@ from metrics.dsl.specs import (
     TransformationSpec,
     VariableSpecLike,
 )
-from metrics.queries import (
-    Expr,
-    LabelSeq,
-    ScopeName,
-    SelectorSeq,
-    expr_histogram_avg,
-    expr_histogram_quantile,
-    legend_for,
-)
+from metrics.queries import Expr
 from metrics.queries import target as build_target
 
 DEFAULT_PANEL_HEIGHT = 7
@@ -91,13 +83,6 @@ def _next_available_ref(targets: list[TargetSpec]) -> str:
         if candidate not in used:
             return candidate
         index += 1
-
-
-def _quantile_suffix(quantile: float) -> str:
-    quantile_text = f"{quantile:.12g}"
-    if quantile_text.startswith("0."):
-        quantile_text = quantile_text[2:]
-    return f"p{quantile_text.replace('.', '').rstrip('0') or '0'}"
 
 
 def _label_table_transformations(
@@ -430,88 +415,6 @@ class GraphPanelBuilder(BasePanelBuilder):
     min: str | int | float | None = None
     max: str | int | float | None = None
     decimals: int | None = None
-
-    def add_histogram(
-        self,
-        metric: str,
-        *,
-        by_labels: LabelSeq = (),
-        scope: ScopeName = "instance",
-        selectors: SelectorSeq = (),
-        window: str = "1m",
-        quantile: float = 0.99,
-        quantile_legend: str | None = None,
-        average_legend: str | None = None,
-        range_query: bool = False,
-        format: str | None = None,
-    ) -> Self:
-        """Add the common `quantile + average` graph series for one histogram."""
-
-        quantile_suffix = _quantile_suffix(quantile)
-        quantile_expr = expr_histogram_quantile(
-            quantile,
-            metric,
-            by_labels=by_labels,
-            scope=scope,
-            selectors=selectors,
-            window=window,
-        )
-        average_expr = expr_histogram_avg(
-            metric,
-            by_labels=by_labels,
-            scope=scope,
-            selectors=selectors,
-            window=window,
-        )
-        quantile_legend_format = quantile_legend or legend_for(*by_labels, suffix=quantile_suffix)
-        average_legend_format = average_legend or legend_for(*by_labels, suffix="avg")
-
-        if format is None and range_query:
-            self.add_auto_range_query(
-                quantile_expr,
-                legend_format=quantile_legend_format,
-            )
-            self.add_auto_range_query(
-                average_expr,
-                legend_format=average_legend_format,
-            )
-            return self
-
-        if format is None:
-            self.add_auto_query(
-                quantile_expr,
-                legend_format=quantile_legend_format,
-            )
-            self.add_auto_query(
-                average_expr,
-                legend_format=average_legend_format,
-            )
-            return self
-
-        if range_query:
-            self.add_range_query(
-                quantile_expr,
-                legend_format=quantile_legend_format,
-                format=format,
-            )
-            self.add_range_query(
-                average_expr,
-                legend_format=average_legend_format,
-                format=format,
-            )
-            return self
-
-        self.add_query(
-            quantile_expr,
-            legend_format=quantile_legend_format,
-            format=format,
-        )
-        self.add_query(
-            average_expr,
-            legend_format=average_legend_format,
-            format=format,
-        )
-        return self
 
     def build(
         self,

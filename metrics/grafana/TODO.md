@@ -10,11 +10,6 @@
 
 ## P0：优先处理
 
-- [ ] 修复 `Sink - MQ Sink / Worker Send CheckpointTs Message Count` 的误导性
-      legend。
-      当前 legend 写成了 `-P999`，但实际 query 是 `max(...) by (...)` 的计数，
-      不是百分位。
-      代码位置：`metrics/rows/sink_mq.py`
 - [ ] 修复 Event Store 中 pebble duration 相关面板的 legend 与 query 分组
       不一致的问题。
       当前 compaction / flush duration 面板按 `instance, id` 分组，但 legend
@@ -41,7 +36,7 @@
       当前例子：`metrics/rows/event_store.py`、`metrics/rows/sink_mq.py`、
       `metrics/rows/lag_analyze.py`
 - [ ] 规范手写 PromQL 的 selector 顺序，并在确实能减少重复、又不掩盖业务
-      语义时，优先使用共享 helper，例如 `expr_*`、`add_histogram(...)`。
+      语义时，优先使用共享 helper，例如 `expr_*`。
       目标是减少无意义 diff，提高 agent 驱动 dashboard 修改时的确定性与可维护性
 - [ ] 为已经达成共识的 authoring 约定补充自动化一致性检查。
       重点可以包括标题风格、percentile/average legend 命名规则，以及其他
@@ -53,7 +48,6 @@
       已经有显式 `key=` 的 panel；或者先补一个兼容用 `key=`，再改变量名。
       现有很多 panel 的稳定 identity 默认来自本地变量名，所以“为了可读性改名”
       不是无风险重构
-- [ ] 不要把 `add_histogram(...)` 继续泛化到所有手写 histogram panel。
-      只有在后续真的出现重复、稳定、且足够简单的 mixed-mode 模式时，才值得
-      抽象。对于同时混用 range query、auto query、多百分位等复杂面板，
-      当前更适合保持手写，避免把 helper 做复杂
+- [ ] Histogram panel 继续保持显式写法。
+      作者应明确决定展示 quantile、avg、heatmap bucket，避免再引入会隐式
+      展开多条 query 的 builder helper

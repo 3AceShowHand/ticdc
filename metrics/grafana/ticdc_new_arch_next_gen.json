@@ -434,7 +434,7 @@
           },
           "targets": [
             {
-              "expr": "sum(rate(ticdc_sink_dml_event_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\", instance=~\"$ticdc_instance\"}[1m])) by (keyspace_name, changefeed, instance)",
+              "expr": "sum(rate(ticdc_sink_dml_event_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"}[1m])) by (keyspace_name, changefeed, instance)",
               "refId": "A",
               "hide": false,
               "legendFormat": "{{keyspace_name}}-{{changefeed}}-{{instance}}",
@@ -509,13 +509,13 @@
           },
           "targets": [
             {
-              "expr": "sum(rate(ticdc_sink_write_bytes_total{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\", instance=~\"$ticdc_instance\"}[1m])) by (instance, type, changefeed)",
+              "expr": "sum(rate(ticdc_sink_write_bytes_total{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"}[1m])) by (instance, type, changefeed)",
               "refId": "A",
               "hide": false,
               "legendFormat": "{{instance}}-{{changefeed}}-{{type}}"
             },
             {
-              "expr": "avg_over_time(sum(rate(ticdc_sink_write_bytes_total{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\", instance=~\"$ticdc_instance\"}[1m])) by (instance, type, changefeed)[1m:])",
+              "expr": "avg_over_time(sum(rate(ticdc_sink_write_bytes_total{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"}[1m])) by (instance, type, changefeed)[1m:])",
               "refId": "B",
               "hide": true,
               "legendFormat": "{{instance}}-{{changefeed}}-AVG"
@@ -740,7 +740,7 @@
           },
           "targets": [
             {
-              "expr": "sum(ticdc_dynamic_stream_memory_usage{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", area=~\"$changefeed\", instance=~\"$ticdc_instance\", module=~\"event-collector\"}) by (keyspace_name, area, instance, module, type)",
+              "expr": "sum(ticdc_dynamic_stream_memory_usage{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", area=~\"$changefeed\", module=~\"event-collector\"}) by (keyspace_name, area, instance, module, type)",
               "refId": "A",
               "hide": false,
               "legendFormat": "{{keyspace_name}}-{{area}}-{{instance}}-{{module}}-{{type}}"
@@ -3393,9 +3393,10 @@
           },
           "targets": [
             {
-              "expr": "max by (keyspace_name, changefeed, state, code, message) (ticdc_owner_changefeed_error_info{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"})",
+              "expr": "max(ticdc_owner_changefeed_error_info{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"}) by (keyspace_name, changefeed, state, code, message)",
               "refId": "A",
               "hide": false,
+              "legendFormat": "",
               "format": "time_series",
               "instant": true
             }
@@ -9425,7 +9426,7 @@
           },
           "targets": [
             {
-              "expr": "sum(rate(ticdc_event_service_pending_scan_task_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", instance=~\"$ticdc_instance\"}[1m])) by (keyspace_name, instance)",
+              "expr": "sum(rate(ticdc_event_service_pending_scan_task_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\"}[1m])) by (keyspace_name, instance)",
               "refId": "A",
               "hide": false,
               "legendFormat": "pending-task-{{instance}}"
@@ -9499,7 +9500,7 @@
           },
           "targets": [
             {
-              "expr": "ticdc_event_service_dispatcher_status_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", instance=~\"$ticdc_instance\"}",
+              "expr": "ticdc_event_service_dispatcher_status_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\"}",
               "refId": "B",
               "hide": false,
               "legendFormat": "{{instance}}-dispatcherStatus-{{status}}"
@@ -9647,7 +9648,7 @@
           },
           "targets": [
             {
-              "expr": "sum(rate(ticdc_event_service_channel_size{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", instance=~\"$ticdc_instance\"}[1m])) by (instance, type)",
+              "expr": "sum(rate(ticdc_event_service_channel_size{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\"}[1m])) by (instance, type)",
               "refId": "A",
               "hide": false,
               "legendFormat": "{{instance}}-{{type}}"
@@ -13513,7 +13514,7 @@
               "expr": "max(ticdc_sink_mq_checkpoint_ts_message_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\"}) by (keyspace_name, changefeed, instance)",
               "refId": "A",
               "hide": false,
-              "legendFormat": "{{keyspace_name}}-{{changefeed}}-{{instance}}-P999"
+              "legendFormat": "{{keyspace_name}}-{{changefeed}}-{{instance}}"
             }
           ],
           "title": "Worker Send CheckpointTs Message Count",
@@ -15137,7 +15138,7 @@
           },
           "targets": [
             {
-              "expr": "sum(ticdc_maintainer_total_operator_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\", instance=~\"$ticdc_instance\", type!=\"occupy\"}) by (keyspace_name, changefeed, type, mode)",
+              "expr": "sum(ticdc_maintainer_total_operator_count{k8s_cluster=\"$k8s_cluster\", sharedpool_id=\"$tidb_cluster\", instance=~\"$ticdc_instance\", keyspace_name=~\"$keyspace_name\", changefeed=~\"$changefeed\", type!=\"occupy\"}) by (keyspace_name, changefeed, type, mode)",
               "refId": "A",
               "hide": false,
               "legendFormat": "{{type}}-{{keyspace_name}}-{{changefeed}}-{{mode}}",
@@ -20023,5 +20024,5 @@
   },
   "title": "test-cluster-TiCDC-New-Arch",
   "uid": "YiGL8hBZ0aac",
-  "version": 41
+  "version": 43
 }

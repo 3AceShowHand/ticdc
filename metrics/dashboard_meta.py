@@ -12,7 +12,7 @@ from typing import Final
 BASE_DASHBOARD_TITLE: Final = "test-cluster-TiCDC-New-Arch"
 BASE_DASHBOARD_UID: Final = "YiGL8hBZ0aac"
 # Keep this monotonic for the stable dashboard UID.
-DASHBOARD_VERSION: Final = 41
+DASHBOARD_VERSION: Final = 43
 DATASOURCE_INPUT_NAME: Final = "DS_TEST-CLUSTER"
 DATASOURCE: Final = f"${{{DATASOURCE_INPUT_NAME}}}"
 DATASOURCE_INPUT: Final[dict[str, object]] = {
