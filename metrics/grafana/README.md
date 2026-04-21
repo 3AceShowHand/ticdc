@@ -1,5 +1,15 @@
 # TiCDC Dashboard As Code
 
+## Quick Start
+
+todo:
+* How to manage panel
+* How to manage row
+
+
+## Introduction to the Grafana dashboard
+
+
 这份文档是当前 TiCDC Grafana dashboard Python 化改造的稳定维护说明。
 
 此前为推动这次改造而产生的过程性设计稿、实现计划、兼容性跟踪文档，
@@ -12,6 +22,9 @@
 - 当前还剩哪些后续工作
 
 其中，稳定说明以本文件为准；阶段性待办请看 `metrics/grafana/TODO.md`。
+
+如果你当前的目标是 review 代码，而不是直接改 dashboard，请先看
+`metrics/grafana/REVIEW_GUIDE.md`。那份文档会按 reviewer 视角带你读代码。
 
 ## 目标
 
