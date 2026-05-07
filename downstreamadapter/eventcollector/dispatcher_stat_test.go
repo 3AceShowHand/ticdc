@@ -47,11 +47,7 @@ type mockDispatcher struct {
 	checkPointTs uint64
 
 	skipSyncpointAtStartTs bool
-<<<<<<< HEAD
-	router                 *routing.Router
-=======
 	router                 routing.Router
->>>>>>> master
 }
 
 func newMockDispatcher(id common.DispatcherID, startTs uint64) *mockDispatcher {
@@ -138,12 +134,6 @@ func (m *mockDispatcher) IsOutputRawChangeEvent() bool {
 	return false
 }
 
-<<<<<<< HEAD
-func (m *mockDispatcher) GetRouter() *routing.Router {
-	return m.router
-}
-
-=======
 func (m *mockDispatcher) GetRouter() routing.Router {
 	return m.router
 }
@@ -154,7 +144,6 @@ func (m *mockDispatcher) HandleError(err error) {
 	}
 }
 
->>>>>>> master
 // mockEvent implements the Event interface for testing
 type mockEvent struct {
 	eventType    int

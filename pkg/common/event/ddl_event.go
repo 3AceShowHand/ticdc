@@ -212,10 +212,6 @@ func (d *DDLEvent) GetExtraSchemaName() string {
 	return d.ExtraSchemaName
 }
 
-func (d *DDLEvent) GetSourceExtraSchemaName() string {
-	return d.ExtraSchemaName
-}
-
 func (d *DDLEvent) GetExtraTableName() string {
 	return d.ExtraTableName
 }
@@ -363,13 +359,6 @@ func (e *DDLEvent) GetDDLQuery() string {
 		return ""
 	}
 	return e.Query
-}
-
-func (e *DDLEvent) GetDDLSchemaName() string {
-	if e == nil {
-		return ""
-	}
-	return e.GetTargetSchemaName()
 }
 
 func (e *DDLEvent) GetDDLType() model.ActionType {

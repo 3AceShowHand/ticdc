@@ -831,15 +831,3 @@ func (d *dispatcherStat) newDispatcherRemoveRequest(serverId string) *messaging.
 		},
 	}
 }
-
-// applyRoutingToTableInfo applies routing rules to the TableInfo and returns a new TableInfo
-// with TargetSchema/TargetTable set. If no routing is needed (no router configured, or routing
-// results in same schema/table), returns the original tableInfo unchanged.
-// This avoids mutating shared TableInfo objects that may be used by multiple changefeeds.
-func (d *dispatcherStat) applyRoutingToTableInfo(tableInfo *common.TableInfo) *common.TableInfo {
-	return d.target.GetRouter().ApplyToTableInfo(tableInfo)
-}
-
-func (d *dispatcherStat) applyRoutingToDDLEvent(ddl *commonEvent.DDLEvent) (*commonEvent.DDLEvent, error) {
-	return d.target.GetRouter().ApplyToDDLEvent(ddl, d.target.GetChangefeedID())
-}
