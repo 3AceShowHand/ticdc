@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -30,6 +31,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 )
 
 const (
@@ -428,18 +431,19 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 		return err
 	}
 
-	if msg.Type != int32(TypeMessageHandShake) {
-		log.Panic("Received unexpected message type, should be handshake",
-			zap.Stringer("localID", s.messageCenter.id),
-			zap.String("localAddr", s.messageCenter.addr),
-			zap.String("remoteID", msg.From),
-			zap.Int32("type", msg.Type))
+	if msg == nil || msg.Type != int32(TypeMessageHandShake) || len(msg.Payload) != 1 {
+		return errors.ErrDecodeFailed.FastGenByArgs("expected one handshake payload")
 	}
 
 	handshake := &HandshakeMessage{}
 	if err := handshake.Unmarshal(msg.Payload[0]); err != nil {
-		log.Warn("failed to unmarshal handshake message", zap.Error(err))
-		return err
+		return errors.WrapError(errors.ErrDecodeFailed, err, "cannot decode handshake")
+	}
+	if handshake.StreamType != streamTypeEvent && handshake.StreamType != streamTypeCommand {
+		return errors.ErrDecodeFailed.FastGenByArgs("unknown stream type")
+	}
+	if msg.From == "" {
+		return errors.ErrDecodeFailed.FastGenByArgs("missing sender")
 	}
 
 	to := node.ID(msg.To)
@@ -454,7 +458,7 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 	var ok bool
 
 	// Wait a while for the node to be discovered
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(stream.Context(), time.Second*10)
 	defer cancel()
 	err = retry.Do(ctx, func() error {
 		s.messageCenter.remoteTargets.RLock()
@@ -477,6 +481,9 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 		log.Error("Failed to get remote target", zap.Error(err))
 		return err
 	}
+	if err := s.authenticatePeer(stream.Context(), target); err != nil {
+		return err
+	}
 
 	log.Info("Start to receive messages from remote target",
 		zap.String("streamType", handshake.StreamType),
@@ -486,6 +493,31 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 		zap.String("remoteAddr", target.targetAddr))
 
 	return target.handleIncomingStream(stream, handshake)
+}
+
+func (s *grpcServer) authenticatePeer(ctx context.Context, target *remoteMessageTarget) error {
+	security := s.messageCenter.security
+	if security == nil || (!security.MTLS && len(security.CertAllowedCN) == 0) {
+		return nil
+	}
+	remotePeer, ok := peer.FromContext(ctx)
+	if !ok {
+		return errors.ErrUnauthorized.FastGenByArgs(target.targetId, "missing client authentication")
+	}
+	tlsInfo, ok := remotePeer.AuthInfo.(credentials.TLSInfo)
+	if !ok || !tlsInfo.State.HandshakeComplete || len(tlsInfo.State.VerifiedChains) == 0 || len(tlsInfo.State.PeerCertificates) == 0 {
+		return errors.ErrUnauthorized.FastGenByArgs(target.targetId, "verified client certificate required")
+	}
+	// Membership binds the capture ID to its advertised host. Use certificate SANs
+	// to verify that the authenticated peer is allowed to represent that host.
+	host, _, err := net.SplitHostPort(target.targetAddr)
+	if err != nil {
+		return errors.WrapError(errors.ErrUnauthorized, err, target.targetId, "invalid registered client address")
+	}
+	if err := tlsInfo.State.PeerCertificates[0].VerifyHostname(host); err != nil {
+		return errors.WrapError(errors.ErrUnauthorized, err, target.targetId, "certificate does not identify the registered client host")
+	}
+	return nil
 }
 
 type HandshakeMessage struct {
