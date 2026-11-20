@@ -177,12 +177,12 @@ type DynamicStream[A Area, P Path, T Event, D Dest, H Handler[A, P, T, D]] inter
 
 	// AddPath add the path to the dynamic stream to receive the events.
 	// An event of a path not already added will be dropped.
-	// Return ErrorTypeDuplicate if the path already exists.
+	// Return ErrPathAlreadyExists if the path already exists.
 	AddPath(path P, dest D, area ...AreaSettings) error
 
 	// RemovePath removes the path from the dynamic stream.
 	// After this call return, future events with the path will be dropped, including events which are already in the stream.
-	// If the path doesn't exist, it will return ErrorTypeNotExist.
+	// If the path doesn't exist, it will return ErrPathNotExist.
 	RemovePath(path P) error
 
 	// Release reclaims pending payloads. EventCollector paths retain recovery

@@ -109,7 +109,8 @@ func (s *remoteMessageTarget) isReadyToSend() bool {
 func (s *remoteMessageTarget) sendEvent(msg ...*TargetMessage) error {
 	if !s.isReadyToSend() {
 		s.errorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeConnectionNotFound, Reason: genSendErrorMsg("Stream not ready", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageConnectionNotFound.FastGenByArgs(
+			genSendErrorMsg("stream not ready", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	}
 
 	// Create message with EVENT type
@@ -118,13 +119,15 @@ func (s *remoteMessageTarget) sendEvent(msg ...*TargetMessage) error {
 	select {
 	case <-s.ctx.Done():
 		s.errorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeConnectionNotFound, Reason: genSendErrorMsg("Stream has been closed", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageConnectionNotFound.FastGenByArgs(
+			genSendErrorMsg("stream has been closed", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	case s.sendEventCh <- protoMsg:
 		s.sendEventCounter.Add(float64(len(msg)))
 		return nil
 	default:
 		s.congestedEventErrorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeMessageCongested, Reason: genSendErrorMsg("Send event message is congested", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageCongested.FastGenByArgs(
+			genSendErrorMsg("event channel is full", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	}
 }
 
@@ -132,7 +135,8 @@ func (s *remoteMessageTarget) sendEvent(msg ...*TargetMessage) error {
 func (s *remoteMessageTarget) sendCommand(msg ...*TargetMessage) error {
 	if !s.isReadyToSend() {
 		s.errorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeConnectionNotFound, Reason: genSendErrorMsg("Stream not ready", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageConnectionNotFound.FastGenByArgs(
+			genSendErrorMsg("stream not ready", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	}
 
 	// Create message with COMMAND type
@@ -141,13 +145,15 @@ func (s *remoteMessageTarget) sendCommand(msg ...*TargetMessage) error {
 	select {
 	case <-s.ctx.Done():
 		s.errorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeConnectionNotFound, Reason: genSendErrorMsg("Stream has been closed", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageConnectionNotFound.FastGenByArgs(
+			genSendErrorMsg("stream has been closed", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	case s.sendCmdCh <- protoMsg:
 		s.sendCmdCounter.Add(float64(len(msg)))
 		return nil
 	default:
 		s.congestedCmdErrorCounter.Inc()
-		return errors.AppError{Type: errors.ErrorTypeMessageCongested, Reason: genSendErrorMsg("Send command message is congested", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr)}
+		return errors.ErrMessageCongested.FastGenByArgs(
+			genSendErrorMsg("command channel is full", string(s.messageCenterID), s.localAddr, string(s.targetId), s.targetAddr))
 	}
 }
 
@@ -272,10 +278,7 @@ func (s *remoteMessageTarget) connect() error {
 			zap.Any("remoteID", s.targetId),
 			zap.Error(err))
 
-		return errors.AppError{
-			Type:   errors.ErrorTypeConnectionFailed,
-			Reason: fmt.Sprintf("Cannot create grpc client on address %s, error: %s", s.targetAddr, err.Error()),
-		}
+		return errors.WrapError(errors.ErrMessageConnectionFailed, err, s.targetAddr)
 	}
 
 	client := proto.NewMessageServiceClient(conn)
@@ -304,10 +307,7 @@ func (s *remoteMessageTarget) connect() error {
 				zap.String("remoteAddr", s.targetAddr),
 				zap.Error(err))
 
-			err = errors.AppError{
-				Type:   errors.ErrorTypeConnectionFailed,
-				Reason: fmt.Sprintf("Cannot open bidirectional grpc stream, error: %s", errors.Trace(err).Error()),
-			}
+			err = errors.WrapError(errors.ErrMessageConnectionFailed, err, s.targetAddr)
 			outerErr = err
 			streamCancel()
 			return false
@@ -326,7 +326,7 @@ func (s *remoteMessageTarget) connect() error {
 		hsBytes, err := handshake.Marshal()
 		if err != nil {
 			log.Error("Failed to marshal handshake message", zap.Error(err))
-			err = errors.AppError{Type: errors.ErrorTypeMessageSendFailed, Reason: errors.Trace(err).Error()}
+			err = errors.WrapError(errors.ErrMessageSendFailed, err)
 			outerErr = err
 			return false
 		}
@@ -346,10 +346,7 @@ func (s *remoteMessageTarget) connect() error {
 				zap.Any("remoteID", s.targetId),
 				zap.String("remoteAddr", s.targetAddr),
 				zap.Error(err))
-			err = errors.AppError{
-				Type:   errors.ErrorTypeMessageSendFailed,
-				Reason: fmt.Sprintf("Failed to send handshake, error: %s", errors.Trace(err).Error()),
-			}
+			err = errors.WrapError(errors.ErrMessageSendFailed, err)
 			outerErr = err
 			return false
 		}
@@ -539,7 +536,7 @@ func (s *remoteMessageTarget) runSendMessages(ctx context.Context, streamType st
 					zap.String("remoteAddr", s.targetAddr),
 					zap.String("streamType", streamType),
 					zap.Stringer("message", msg))
-				err = errors.AppError{Type: errors.ErrorTypeMessageSendFailed, Reason: errors.Trace(err).Error()}
+				err = errors.WrapError(errors.ErrMessageSendFailed, err)
 				return err
 			}
 		}
@@ -614,7 +611,7 @@ func (s *remoteMessageTarget) handleIncomingMessage(ctx context.Context, stream 
 				zap.String("localAddr", s.localAddr),
 				zap.Stringer("remoteID", s.targetId),
 				zap.String("remoteAddr", s.targetAddr))
-			err = errors.AppError{Type: errors.ErrorTypeMessageReceiveFailed, Reason: errors.Trace(err).Error()}
+			err = errors.WrapError(errors.ErrMessageReceiveFailed, err)
 			return err
 		}
 

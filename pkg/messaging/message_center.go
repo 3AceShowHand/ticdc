@@ -16,7 +16,6 @@ package messaging
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -49,7 +48,7 @@ type MessageCenter interface {
 
 // MessageSender is the interface for sending messages to the target.
 // The method in the interface should be thread-safe and non-blocking.
-// If the message cannot be sent, the method will return an `ErrorTypeMessageCongested` error.
+// If the message cannot be sent, the method will return an `ErrMessageCongested` error.
 type MessageSender interface {
 	SendEvent(msg *TargetMessage) error
 	SendCommand(cmd *TargetMessage) error
@@ -296,7 +295,7 @@ func (mc *messageCenter) SendEvent(msg *TargetMessage) error {
 		// For example, if the target is not discovered yet, the caller can retry later.
 		// If the target is removed, the caller must remove the objects that was sending
 		// message to this target to avoid blocking.
-		return errors.AppError{Type: errors.ErrorTypeTargetNotFound, Reason: fmt.Sprintf("Target %s not found", msg.To)}
+		return errors.ErrMessageTargetNotFound.FastGenByArgs(msg.To)
 	}
 	return target.sendEvent(msg)
 }
@@ -314,7 +313,7 @@ func (mc *messageCenter) SendCommand(msg *TargetMessage) error {
 	target, ok := mc.remoteTargets.m[msg.To]
 	mc.remoteTargets.RUnlock()
 	if !ok {
-		return errors.WithStack(errors.AppError{Type: errors.ErrorTypeTargetNotFound, Reason: fmt.Sprintf("Target %v not found", msg.To.String())})
+		return errors.ErrMessageTargetNotFound.FastGenByArgs(msg.To)
 	}
 	return target.sendCommand(msg)
 }
@@ -436,7 +435,7 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 
 	to := node.ID(msg.To)
 	if to != s.id() {
-		err := errors.AppError{Type: errors.ErrorTypeTargetMismatch, Reason: fmt.Sprintf("The receiver %s not match with the message center id %s", to, s.id())}
+		err := errors.ErrMessageTargetMismatch.FastGenByArgs(to, s.id())
 		log.Error("Target mismatch", zap.Error(err))
 		return err
 	}
@@ -458,7 +457,7 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 				zap.Stringer("localID", s.messageCenter.id),
 				zap.String("localAddr", s.messageCenter.addr),
 				zap.Stringer("remoteID", targetId))
-			err := &errors.AppError{Type: errors.ErrorTypeTargetNotFound, Reason: fmt.Sprintf("Target %s not found", targetId)}
+			err := errors.ErrMessageTargetNotFound.FastGenByArgs(targetId)
 			return err
 		}
 		return nil
@@ -482,30 +481,18 @@ func (s *grpcServer) handleConnect(stream proto.MessageService_StreamMessagesSer
 
 func decodeHandshakeMessage(msg *proto.Message) (*HandshakeMessage, error) {
 	if msg == nil {
-		return nil, errors.AppError{
-			Type:   errors.ErrorTypeInvalidMessage,
-			Reason: "handshake message is nil",
-		}
+		return nil, errors.ErrInvalidMessage.FastGen("handshake message is nil")
 	}
 	if msg.Type != int32(TypeMessageHandShake) {
-		return nil, errors.AppError{
-			Type:   errors.ErrorTypeInvalidMessage,
-			Reason: fmt.Sprintf("unexpected handshake message type %d", msg.Type),
-		}
+		return nil, errors.ErrInvalidMessage.FastGen("handshake message has unexpected type %d", msg.Type)
 	}
 	if len(msg.Payload) != 1 {
-		return nil, errors.AppError{
-			Type:   errors.ErrorTypeInvalidMessage,
-			Reason: fmt.Sprintf("handshake must contain exactly one payload, got %d", len(msg.Payload)),
-		}
+		return nil, errors.ErrInvalidMessage.FastGen("handshake must contain exactly one payload, got %d", len(msg.Payload))
 	}
 
 	handshake := &HandshakeMessage{}
 	if err := handshake.Unmarshal(msg.Payload[0]); err != nil {
-		return nil, errors.AppError{
-			Type:   errors.ErrorTypeInvalidMessage,
-			Reason: err.Error(),
-		}
+		return nil, errors.WrapError(errors.ErrInvalidMessage, err)
 	}
 	return handshake, nil
 }

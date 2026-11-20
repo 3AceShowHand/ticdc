@@ -14,7 +14,6 @@
 package dynstream
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -201,7 +200,7 @@ func (s *parallelDynamicStream[A, P, T, D, H]) AddPath(path P, dest D, as ...Are
 	_, ok := s.pathMap.m[path]
 	if ok {
 		s.pathMap.Unlock()
-		return NewAppError(ErrorTypeDuplicate, fmt.Sprintf("path %v already exists", path))
+		return ErrPathAlreadyExists.FastGenByArgs(path)
 	}
 
 	area := s.handler.GetArea(path, dest)
@@ -236,7 +235,7 @@ func (s *parallelDynamicStream[A, P, T, D, H]) RemovePath(path P) error {
 	pi, ok := s.pathMap.m[path]
 	if !ok {
 		s.pathMap.Unlock()
-		return NewAppErrorS(ErrorTypeNotExist)
+		return ErrPathNotExist.FastGenByArgs(path)
 	}
 
 	pi.removed.Store(true)

@@ -14,8 +14,6 @@
 package errors
 
 import (
-	"fmt"
-
 	"github.com/pingcap/errors"
 )
 
@@ -860,108 +858,54 @@ var (
 		"data key not found: %s",
 		errors.RFCCodeText("CDC:ErrDataKeyNotFound"),
 	)
+
+	ErrInvalidMessage = errors.Normalize(
+		"invalid message",
+		errors.RFCCodeText("CDC:ErrInvalidMessage"),
+	)
+
+	ErrMessageTargetNotFound = errors.Normalize(
+		"message target %s not found",
+		errors.RFCCodeText("CDC:ErrMessageTargetNotFound"),
+	)
+
+	ErrMessageTargetMismatch = errors.Normalize(
+		"message receiver %s does not match the message center %s",
+		errors.RFCCodeText("CDC:ErrMessageTargetMismatch"),
+	)
+
+	ErrMessageConnectionNotFound = errors.Normalize(
+		"message connection not found: %s",
+		errors.RFCCodeText("CDC:ErrMessageConnectionNotFound"),
+	)
+
+	ErrMessageConnectionFailed = errors.Normalize(
+		"message connection failed: %s",
+		errors.RFCCodeText("CDC:ErrMessageConnectionFailed"),
+	)
+
+	ErrMessageCongested = errors.Normalize(
+		"message congested: %s",
+		errors.RFCCodeText("CDC:ErrMessageCongested"),
+	)
+
+	ErrMessageSendFailed = errors.Normalize(
+		"message send failed",
+		errors.RFCCodeText("CDC:ErrMessageSendFailed"),
+	)
+
+	ErrMessageReceiveFailed = errors.Normalize(
+		"message receive failed",
+		errors.RFCCodeText("CDC:ErrMessageReceiveFailed"),
+	)
+
+	ErrPathAlreadyExists = errors.Normalize(
+		"path %v already exists",
+		errors.RFCCodeText("CDC:ErrPathAlreadyExists"),
+	)
+
+	ErrPathNotExist = errors.Normalize(
+		"path %v does not exist",
+		errors.RFCCodeText("CDC:ErrPathNotExist"),
+	)
 )
-
-// ErrorType defines the type of application errors
-type ErrorType int
-
-const (
-	// ErrorTypeUnknown is the default error type.
-	ErrorTypeUnknown ErrorType = 0
-
-	ErrorTypeEpochMismatch  ErrorType = 1
-	ErrorTypeEpochSmaller   ErrorType = 2
-	ErrorTypeTaskIDMismatch ErrorType = 3
-
-	ErrorTypeInvalid    ErrorType = 101
-	ErrorTypeIncomplete ErrorType = 102
-	ErrorTypeDecodeData ErrorType = 103
-	ErrorTypeBufferFull ErrorType = 104
-	ErrorTypeDuplicate  ErrorType = 105
-	ErrorTypeNotExist   ErrorType = 106
-	ErrorTypeClosed     ErrorType = 107
-
-	ErrorTypeConnectionFailed     ErrorType = 201
-	ErrorTypeConnectionNotFound   ErrorType = 202
-	ErrorTypeMessageCongested     ErrorType = 204
-	ErrorTypeMessageReceiveFailed ErrorType = 205
-	ErrorTypeMessageSendFailed    ErrorType = 206
-	ErrorTypeTargetNotFound       ErrorType = 207
-	ErrorTypeInvalidMessage       ErrorType = 208
-	ErrorTypeTargetMismatch       ErrorType = 209
-
-	ErrorInvalidDDLEvent ErrorType = 301
-)
-
-func (t ErrorType) String() string {
-	switch t {
-	case ErrorTypeUnknown:
-		return "Unknown"
-	case ErrorTypeEpochMismatch:
-		return "EpochMismatch"
-	case ErrorTypeEpochSmaller:
-		return "EpochSmaller"
-	case ErrorTypeTaskIDMismatch:
-		return "TaskIDMismatch"
-	case ErrorTypeInvalid:
-		return "Invalid"
-	case ErrorTypeIncomplete:
-		return "Incomplete"
-	case ErrorTypeDecodeData:
-		return "DecodeData"
-	case ErrorTypeBufferFull:
-		return "BufferFull"
-	case ErrorTypeDuplicate:
-		return "Duplicate"
-	case ErrorTypeNotExist:
-		return "NotExist"
-	case ErrorTypeClosed:
-		return "Closed"
-	case ErrorTypeConnectionFailed:
-		return "ConnectionFailed"
-	case ErrorTypeConnectionNotFound:
-		return "ConnectionNotFound"
-	case ErrorTypeMessageCongested:
-		return "MessageCongested"
-	case ErrorTypeMessageReceiveFailed:
-		return "MessageReceiveFailed"
-	case ErrorTypeMessageSendFailed:
-		return "MessageSendFailed"
-	default:
-		return "Unknown"
-	}
-}
-
-// AppError represents an application-specific error
-type AppError struct {
-	Type   ErrorType
-	Reason string
-}
-
-// NewAppErrorS creates a new AppError with only type
-func NewAppErrorS(t ErrorType) *AppError {
-	return &AppError{
-		Type:   t,
-		Reason: "",
-	}
-}
-
-// NewAppError creates a new AppError with type and reason
-func NewAppError(t ErrorType, reason string) *AppError {
-	return &AppError{
-		Type:   t,
-		Reason: reason,
-	}
-}
-
-func (e AppError) Error() string {
-	return fmt.Sprintf("ErrorType: %s, Reason: %s", e.Type, e.Reason)
-}
-
-func (e AppError) GetType() ErrorType {
-	return e.Type
-}
-
-func (e AppError) Equal(err AppError) bool {
-	return e.Type == err.Type
-}

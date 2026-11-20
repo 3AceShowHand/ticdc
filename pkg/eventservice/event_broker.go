@@ -15,7 +15,6 @@ package eventservice
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -1042,9 +1041,8 @@ func (c *eventBroker) sendMsg(ctx context.Context, tMsg *messaging.TargetMessage
 		// Send the message to the dispatcher.
 		err := c.msgSender.SendEvent(tMsg)
 		if err != nil {
-			_, ok := err.(errors.AppError)
-			log.Debug("send msg failed, retry it later", zap.Error(err), zap.Stringer("tMsg", tMsg), zap.Bool("castOk", ok))
-			if strings.Contains(err.Error(), "congested") {
+			log.Debug("send msg failed, retry it later", zap.Error(err), zap.Stringer("tMsg", tMsg))
+			if code, ok := errors.RFCCode(err); ok && code == errors.ErrMessageCongested.RFCCode() {
 				log.Debug("send message failed since the message is congested, retry it laster", zap.Error(err))
 				// Wait for a while and retry to avoid the dropped message flood.
 				time.Sleep(congestedRetryInterval)

@@ -383,7 +383,7 @@ func TestRemovedConsumerStopsRegistrationRetriesAndHeartbeats(t *testing.T) {
 				} else {
 					removeAttempts <- struct{}{}
 				}
-				return errors.AppError{Type: errors.ErrorTypeConnectionNotFound}
+				return errors.ErrMessageConnectionNotFound.FastGenByArgs("mock peer")
 			}).AnyTimes()
 			var wg sync.WaitGroup
 			t.Cleanup(func() { release(); cancel(); wg.Wait(); c.dispatcherMessageChan.CloseAndDrain() })

@@ -498,7 +498,7 @@ func (c *EventCollector) sendDispatcherRequests(ctx context.Context) error {
 			if err != nil {
 				sleepInterval := 10 * time.Millisecond
 				// if the error is Congested, sleep a larger interval
-				if appErr, ok := err.(errors.AppError); ok && appErr.Type == errors.ErrorTypeMessageCongested {
+				if code, ok := errors.RFCCode(err); ok && code == errors.ErrMessageCongested.RFCCode() {
 					sleepInterval = 1 * time.Second
 				}
 				log.Info("failed to send dispatcher request message, try again later",
